@@ -1,0 +1,44 @@
+# Dataset sources and preparation options.
+#
+# Build order follows PROJECT_CONTEXT.md Sec. 3: Hateful Memes and Fakeddit
+# first (they carry the "signals only make sense together" thesis), HateXplain
+# next for the explainability chapter, deepfake branch last.
+
+datasets:
+  hateful_memes:
+    hf_repo: neuralcatcher/hateful_memes
+    kind: multimodal
+    enabled: true
+    options:
+      # The challenge's official test set is unlabeled; this mirror ships
+      # labeled dev/test "seen" splits, which is what the ablation table needs.
+      val_split_file: dev_seen.jsonl
+      test_split_file: test_seen.jsonl
+      train_split_file: train.jsonl
+
+  fakeddit:
+    hf_repo: AdoCleanCode/Fakeddit
+    kind: multimodal
+    enabled: true
+    options:
+      # Two tiers. "offline" uses a mirror that bundles its images, so the
+      # pipeline is runnable with no network scraping. "scale" samples the
+      # 794k-row metadata table and fetches images from their source URLs.
+      tier: offline
+      offline_repo: ams-99/fakeddit_9k
+      # Scale-tier controls (ignored when tier: offline)
+      sample_size: 40000
+      val_fraction: 0.1
+      test_fraction: 0.1
+      max_download_workers: 16
+      seed: 42
+
+  hatexplain:
+    hf_repo: Hate-speech-CNERG/hatexplain
+    kind: text
+    enabled: true
+    options:
+      # HateXplain ships 3 annotator labels per post; we majority-vote them and
+      # drop posts with no majority (genuine annotator disagreement is not a
+      # training signal we can use for a hard label).
+      drop_ties: true

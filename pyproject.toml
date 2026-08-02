@@ -1,0 +1,53 @@
+[project]
+name = "mcm"
+version = "0.1.0"
+description = "Multimodal content moderation: cross-attention fusion of vision and language signals with explainable verdicts"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+
+# Base install = everything needed to build datasets and train the fusion models.
+# Heavier / optional subsystems live in [project.optional-dependencies] so the
+# first `uv sync` stays fast.
+dependencies = [
+    "torch>=2.4",
+    "torchvision>=0.19",
+    "transformers>=4.44",
+    "datasets>=2.20",
+    "huggingface-hub>=0.24",
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=17.0",
+    "pillow>=10.4",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+    "rich>=13.7",
+    "requests>=2.32",
+    "python-dotenv>=1.0",
+    "scikit-learn>=1.5",
+]
+
+[project.optional-dependencies]
+xai = ["shap>=0.46", "grad-cam>=1.5", "lime>=0.2.0.1", "matplotlib>=3.9"]
+cv = ["opencv-python-headless>=4.10", "easyocr>=1.7", "ultralytics>=8.2"]
+serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "pymongo>=4.8", "google-genai>=0.3", "groq>=0.11"]
+track = ["wandb>=0.17"]
+dev = ["pytest>=8.3", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcm"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
