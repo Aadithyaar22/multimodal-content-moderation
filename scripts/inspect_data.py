@@ -15,12 +15,13 @@ from __future__ import annotations
 import argparse
 import sys
 
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
 from mcm.config import load_data_config, processed_manifest
 from mcm.data.datasets import ModerationDataset, class_weights, make_collate_fn
-from mcm.data.manifest import read_manifest, resolve_image
+from mcm.data.manifest import load_splits, read_manifest, resolve_image
 from mcm.data.schema import IGNORE_INDEX, label_summary
 from mcm.utils import console, device_report, get_device
 
@@ -90,11 +91,22 @@ def _check_images(df, n: int) -> int:
 
 
 def _smoke_batch(datasets: list[str], batch_size: int) -> None:
-    """Build one real batch through the training data path."""
-    ds = ModerationDataset.from_mixture(datasets, "train")
-    # Shuffle so a mixed batch actually spans datasets rather than taking the
-    # first N rows, which would all come from whichever manifest concatenated first.
-    loader = DataLoader(ds, batch_size=batch_size, shuffle=True, collate_fn=make_collate_fn())
+    """Build one real batch through the training data path.
+
+    The batch is drawn evenly from each dataset rather than sampled at random.
+    A random draw can easily contain no rows from one source, which would leave
+    the sentinel-masking assertion below with nothing to check while still
+    printing a pass — a green tick for a check that never ran.
+    """
+    mixture = load_splits(datasets, "train")
+    per_source = max(1, batch_size // len(datasets))
+    parts = [
+        group.sample(min(len(group), per_source), random_state=0)
+        for _, group in mixture.groupby("dataset")
+    ]
+    stratified = pd.concat(parts).reset_index(drop=True)
+    ds = ModerationDataset(stratified)
+    loader = DataLoader(ds, batch_size=len(ds), shuffle=False, collate_fn=make_collate_fn())
     batch = next(iter(loader))
 
     device = get_device()
@@ -114,10 +126,18 @@ def _smoke_batch(datasets: list[str], batch_size: int) -> None:
     )
     loss.backward()
     ignored = (batch.label_toxicity == IGNORE_INDEX).nonzero().flatten().tolist()
-    clean = all(torch.count_nonzero(logits.grad[i]) == 0 for i in ignored)
+    scored = [i for i in range(len(batch)) if i not in ignored]
+    if not ignored:
+        verdict = "[yellow]NOT EXERCISED — no ignored rows in batch[/]"
+    elif all(torch.count_nonzero(logits.grad[i]) == 0 for i in ignored) and any(
+        torch.count_nonzero(logits.grad[i]) > 0 for i in scored
+    ):
+        verdict = "[green]yes[/]"
+    else:
+        verdict = "[red]NO[/]"
     console.print(
-        f"  toxicity loss={loss.item():.4f}  ignored rows={len(ignored)}  "
-        f"zero-grad on ignored: {'[green]yes[/]' if clean else '[red]NO[/]'}"
+        f"  toxicity loss={loss.item():.4f}  ignored rows={len(ignored)}/{len(batch)}  "
+        f"zero-grad on ignored: {verdict}"
     )
 
 
