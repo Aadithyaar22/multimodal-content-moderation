@@ -13,10 +13,15 @@ is still bound by the original terms, which is recorded in the README.
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
-from huggingface_hub import snapshot_download
+from huggingface_hub import hf_hub_download, snapshot_download
+from tqdm import tqdm
 
 from mcm.config import DATA_DIR, DatasetSpec, raw_dir
 from mcm.data.manifest import write_manifest
@@ -28,18 +33,111 @@ log = get_logger(__name__)
 DATASET = "hateful_memes"
 
 
-def download(spec: DatasetSpec) -> Path:
-    """Fetch jsonl split files and the image directory into data/raw."""
+def download(spec: DatasetSpec, attempts: int = 5) -> Path:
+    """Fetch jsonl split files and the image directory into data/raw.
+
+    This is ~3.3GB across 9664 small files, and long multi-file transfers from
+    the Hub fail intermittently — observed here as a mid-download 401 from the
+    Xet CAS backend after several thousand files. ``snapshot_download`` is
+    resumable, so each retry only fetches what is still missing, and the Xet
+    transfer path is disabled on later attempts because the plain HTTP path is
+    slower but markedly more reliable for a run this long.
+    """
     target = raw_dir(DATASET)
-    log.info("downloading %s -> %s (images included, this is the slow part)", spec.hf_repo, target)
-    snapshot_download(
-        repo_id=spec.hf_repo,
-        repo_type="dataset",
-        local_dir=target,
-        allow_patterns=["*.jsonl", "img/*", "LICENSE.txt", "README.md"],
-        max_workers=8,
-    )
+    patterns = ["*.jsonl", "img/*", "LICENSE.txt", "README.md"]
+
+    for attempt in range(1, attempts + 1):
+        have = len(list((target / "img").glob("*"))) if (target / "img").exists() else 0
+        log.info(
+            "downloading %s -> %s (attempt %d/%d, %d images already local)",
+            spec.hf_repo,
+            target,
+            attempt,
+            attempts,
+            have,
+        )
+        if attempt > 1:
+            os.environ["HF_HUB_DISABLE_XET"] = "1"
+
+        try:
+            snapshot_download(
+                repo_id=spec.hf_repo,
+                repo_type="dataset",
+                local_dir=target,
+                allow_patterns=patterns,
+                max_workers=4 if attempt > 1 else 8,
+            )
+            return target
+        except Exception as e:  # noqa: BLE001
+            if attempt == attempts:
+                raise
+            wait = min(30, 2**attempt)
+            log.warning(
+                "download attempt %d failed (%s: %s); resuming in %ds",
+                attempt,
+                type(e).__name__,
+                str(e)[:120],
+                wait,
+            )
+            time.sleep(wait)
+
     return target
+
+
+def backfill_missing_images(root: Path, split_files: list[str], backfill_repo: str | None) -> int:
+    """Fetch split images the primary mirror does not carry.
+
+    The primary mirror ships 9664 images, but 1707 of those belong to the
+    ``unseen`` splits and 2043 images referenced by train/dev_seen/test_seen are
+    absent — so a naive run silently drops 20% of the dataset, including 20% of
+    the test set the headline fusion result is measured on. The expanded mirror
+    happens to carry exactly those 2043, so they are backfilled here and the
+    dataset reaches its full 10000 samples.
+
+    Returns the number of images fetched.
+    """
+    if not backfill_repo:
+        return 0
+
+    referenced: set[str] = set()
+    for filename in split_files:
+        path = root / filename
+        if not path.exists():
+            continue
+        for line in path.read_text().splitlines():
+            if line.strip():
+                referenced.add(json.loads(line)["img"])
+
+    missing = sorted(rel for rel in referenced if not (root / rel).exists())
+    if not missing:
+        return 0
+
+    log.warning(
+        "%d split images absent from the primary mirror; backfilling from %s",
+        len(missing),
+        backfill_repo,
+    )
+
+    def _grab(rel: str) -> bool:
+        try:
+            src = hf_hub_download(backfill_repo, rel, repo_type="dataset")
+            dest = root / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, dest)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    fetched = 0
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for ok in tqdm(pool.map(_grab, missing), total=len(missing), desc="backfill", unit="img"):
+            fetched += bool(ok)
+
+    still_missing = len(missing) - fetched
+    log.info("backfilled %d/%d images", fetched, len(missing))
+    if still_missing:
+        log.warning("%d images unavailable from either mirror; those rows will be dropped", still_missing)
+    return fetched
 
 
 def prepare(spec: DatasetSpec) -> dict[str, Path]:
@@ -50,6 +148,8 @@ def prepare(spec: DatasetSpec) -> dict[str, Path]:
         "val": opts.get("val_split_file", "dev_seen.jsonl"),
         "test": opts.get("test_split_file", "test_seen.jsonl"),
     }
+
+    backfill_missing_images(root, list(split_files.values()), opts.get("backfill_repo"))
 
     written: dict[str, Path] = {}
     for split, filename in split_files.items():
