@@ -15,6 +15,10 @@ datasets:
       val_split_file: dev_seen.jsonl
       test_split_file: test_seen.jsonl
       train_split_file: train.jsonl
+      # The primary mirror is missing 2043 of the 10000 images its own split
+      # files reference. This mirror carries exactly those, so they are
+      # backfilled rather than silently dropping 20% of the dataset.
+      backfill_repo: limjiayi/hateful_memes_expanded
 
   fakeddit:
     hf_repo: AdoCleanCode/Fakeddit
