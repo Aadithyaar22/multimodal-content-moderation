@@ -1,0 +1,34 @@
+# Data — never commit datasets or downloaded images
+data/raw/
+data/interim/
+data/processed/
+*.parquet
+*.jsonl
+*.tsv
+!configs/**/*.yaml
+
+# Model artifacts
+checkpoints/
+runs/
+wandb/
+*.pt
+*.pth
+*.safetensors
+*.onnx
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Secrets
+.env
+*.key
+
+# macOS
+.DS_Store
