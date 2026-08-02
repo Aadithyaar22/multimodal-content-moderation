@@ -61,6 +61,7 @@ def _prepare_offline(spec: DatasetSpec) -> dict[str, Path]:
 
     # Basename -> path, because the CSV's image_path column points at the
     # original author's Google Drive mount, not at anything on this machine.
+    # The basename is a content hash, so it doubles as an image identity key.
     by_name = {p.stem: p for p in img_root.rglob("*") if p.suffix.lower() in {".jpg", ".jpeg", ".png"}}
     log.info("offline image cache: %d images under %s", len(by_name), img_root)
 
@@ -70,15 +71,43 @@ def _prepare_offline(spec: DatasetSpec) -> dict[str, Path]:
         "test": "test_balanced.csv",
     }
 
-    written: dict[str, Path] = {}
+    frames: dict[str, pd.DataFrame] = {}
     for split, filename in split_files.items():
-        csv_path = Path(hf_hub_download(repo, filename, repo_type="dataset"))
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(Path(hf_hub_download(repo, filename, repo_type="dataset")))
+        df["image_key"] = df["image_path"].map(lambda p: Path(str(p)).stem)
+        frames[split] = df
+
+    leaked = _find_leaked_images(frames)
+
+    written: dict[str, Path] = {}
+    for split, df in frames.items():
+        # An image reused across splits lets the model memorize it in training
+        # and be rewarded for the memory at evaluation. Dropping from the eval
+        # side keeps the test sets clean; dropping from train instead would
+        # leave the leak in whichever eval split kept it.
+        if split != "train" and leaked:
+            before = len(df)
+            df = df[~df["image_key"].isin(leaked)]
+            if before != len(df):
+                log.warning(
+                    "%s/%s: dropped %d rows whose image also appears in another split",
+                    DATASET,
+                    split,
+                    before - len(df),
+                )
+
+        # Genuine duplicates only. The same image under a *different* caption is
+        # a distinct post — and image reuse is itself a misinformation signal
+        # (PROJECT_CONTEXT.md Sec. 1, Example B), so those rows are kept.
+        before = len(df)
+        df = df.drop_duplicates(subset=["text", "image_key", "6_way_label"])
+        if before != len(df):
+            log.info("%s/%s: dropped %d exact duplicate rows", DATASET, split, before - len(df))
 
         records, missing = [], 0
         for i, row in df.iterrows():
-            stem = Path(str(row["image_path"])).stem
-            img = by_name.get(stem)
+            key = row["image_key"]
+            img = by_name.get(key)
             if img is None:
                 missing += 1
                 continue
@@ -86,7 +115,9 @@ def _prepare_offline(spec: DatasetSpec) -> dict[str, Path]:
             label6 = int(row["6_way_label"])
             records.append(
                 Record(
-                    uid=make_uid(DATASET, f"{split}_{stem}"),
+                    # Row index, not image hash: several distinct posts legitimately
+                    # share one image, so hashing the image alone collides.
+                    uid=make_uid(DATASET, f"{split}_{i}"),
                     dataset=DATASET,
                     split=split,
                     text=str(row["text"]),
@@ -96,7 +127,12 @@ def _prepare_offline(spec: DatasetSpec) -> dict[str, Path]:
                     # the toxicity head out of the loss for these rows.
                     label_misinfo_6=label6,
                     label_misinfo_3=MISINFO_6_TO_3[label6],
-                    meta={"source_url": str(row.get("original_url", ""))},
+                    meta={
+                        "source_url": str(row.get("original_url", "")),
+                        # Retained so image-reuse analysis (Sec. 6) can group
+                        # posts that share a picture.
+                        "image_key": key,
+                    },
                 )
             )
 
@@ -108,6 +144,25 @@ def _prepare_offline(spec: DatasetSpec) -> dict[str, Path]:
         log.info("%s/%s\n%s", DATASET, split, label_summary(frame))
 
     return written
+
+
+def _find_leaked_images(frames: dict[str, pd.DataFrame]) -> set[str]:
+    """Images appearing in more than one split.
+
+    The upstream mirror's own partition has a small amount of overlap. Left in
+    place it would inflate every misinformation number in the ablation table, so
+    it is detected and reported rather than trusted.
+    """
+    leaked: set[str] = set()
+    for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
+        if a in frames and b in frames:
+            overlap = set(frames[a]["image_key"]) & set(frames[b]["image_key"])
+            if overlap:
+                log.warning("%s: %d images shared between %s and %s", DATASET, len(overlap), a, b)
+                leaked |= overlap
+    if leaked:
+        log.warning("%s: %d leaked images will be removed from val/test", DATASET, len(leaked))
+    return leaked
 
 
 def _ensure_offline_images(repo: str, root: Path) -> Path:
