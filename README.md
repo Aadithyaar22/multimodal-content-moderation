@@ -19,7 +19,7 @@ explains content for faster review. It does not auto-remove anything.
 
 | Stage | State |
 |---|---|
-| 1. Dataset download + preprocessing | in progress |
+| 1. Dataset download + preprocessing | done |
 | 2. Unimodal baselines (CV-only, NLP-only) | not started |
 | 3. Late fusion baseline | not started |
 | 4. Cross-attention fusion (core contribution) | not started |
@@ -62,11 +62,37 @@ Each dataset normalizes into one canonical record format
 (`src/mcm/data/schema.py`) written as parquet manifests under
 `data/processed/<dataset>/<split>.parquet`.
 
-| Dataset | Role | Source |
-|---|---|---|
-| Hateful Memes | Core fusion thesis — neither modality alone is offensive | `neuralcatcher/hateful_memes` |
-| Fakeddit | Misinformation head, 6-way labels collapsed to 3 | `AdoCleanCode/Fakeddit`, `ams-99/fakeddit_9k` |
-| HateXplain | Human token-level rationales — explanation ground truth | hate-alert/HateXplain |
+| Dataset | Role | train / val / test | Source |
+|---|---|---|---|
+| Hateful Memes | Core fusion thesis — neither modality alone is offensive | 8,500 / 500 / 1,000 | `neuralcatcher/hateful_memes` + `limjiayi/hateful_memes_expanded` |
+| Fakeddit | Misinformation head, 6-way labels collapsed to 3 | 4,799 / 2,376 / 1,422 | `AdoCleanCode/Fakeddit`, `ams-99/fakeddit_9k` |
+| HateXplain | Human token-level rationales — explanation ground truth | 15,383 / 1,922 / 1,924 | hate-alert/HateXplain |
+
+37,826 rows total: 18,597 with images, 19,229 text-only.
+
+Verify a prepared build at any time:
+
+```bash
+python scripts/inspect_data.py
+```
+
+### Two data problems this pipeline corrects
+
+Both were present in the upstream sources and both would have quietly corrupted
+the headline result, so they are fixed in code and reported loudly at build time
+rather than left to be discovered later.
+
+**Hateful Memes: 2,043 missing images.** The primary mirror ships 9,664 images
+against a 10,000-row dataset, which looks complete. It is not — 1,707 of those
+belong to the `unseen` splits, and 2,043 images referenced by
+`train`/`dev_seen`/`test_seen` are absent. Skipping those rows would train on
+79.6% of the data and evaluate on 815 of 1,000 test memes, with a shifted class
+balance. The expanded mirror carries exactly those 2,043, so they are backfilled.
+
+**Fakeddit: cross-split image leakage.** 25 images appear in more than one split
+in the source partition (12 train/val, 10 train/test, 3 val/test). Training on
+an image and then evaluating on it rewards memorization, so leaked images are
+removed from the eval side.
 
 Fakeddit runs in two tiers. `offline` (default) uses a mirror that bundles its
 images, so the pipeline needs no scraping and is reproducible from a clean
