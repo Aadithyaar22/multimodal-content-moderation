@@ -20,9 +20,9 @@ explains content for faster review. It does not auto-remove anything.
 | Stage | State |
 |---|---|
 | 1. Dataset download + preprocessing | done |
-| 2. Unimodal baselines (CV-only, NLP-only) | not started |
-| 3. Late fusion baseline | not started |
-| 4. Cross-attention fusion (core contribution) | not started |
+| 2. Unimodal baselines (CV-only, NLP-only) | done |
+| 3. Late fusion baseline | done |
+| 4. Cross-attention fusion (core contribution) | next |
 | 5. Deepfake branch | not started |
 | 6. Explainability layer (SHAP / Grad-CAM / LLM) | not started |
 | 7. Ablation study + evaluation | not started |
@@ -31,6 +31,32 @@ explains content for faster review. It does not auto-remove anything.
 | 10. Deployment | not started |
 
 Full architecture and rationale: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+
+## Results so far
+
+Test macro-F1, mean ± sd over 3 seeds. All arms share an identical
+`MultiTaskHead` on a frozen CLIP ViT-B/32 backbone, so differences reflect what
+feeds the head, not head capacity.
+
+| Arm | Hateful Memes | Fakeddit |
+|---|---|---|
+| CV-only | 0.6217 ± 0.0064 | 0.6863 ± 0.0040 |
+| NLP-only | 0.6283 ± 0.0098 | 0.7031 ± 0.0030 |
+| Late fusion | **0.6899** ± 0.0121 | **0.7650** ± 0.0031 |
+| Cross-attention | *pending* | *pending* |
+
+Both benchmarks show the same ordering: either modality alone is weak, and
+combining them helps substantially. On Hateful Memes that is by construction —
+the dataset was built so neither modality alone is offensive — so the ~6-point
+unimodal-to-fusion gap is the effect the benchmark exists to produce. The open
+question, and the point of the next stage, is how much of the remaining headroom
+comes from letting the modalities attend to each other rather than merely be
+concatenated.
+
+```bash
+python scripts/encode_features.py --all
+python scripts/train_baseline.py --all-arms --datasets hateful_memes --seeds 1 2 3
+```
 
 ## Setup
 
