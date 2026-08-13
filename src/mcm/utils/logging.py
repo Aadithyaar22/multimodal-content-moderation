@@ -10,6 +10,10 @@ from rich.logging import RichHandler
 console = Console()
 _CONFIGURED = False
 
+# These emit a line per HTTP request. During a model load or a dataset download
+# that is hundreds of lines of 404s and redirects burying the output that matters.
+_NOISY = ("httpx", "httpcore", "urllib3", "filelock", "huggingface_hub.file_download")
+
 
 def get_logger(name: str = "mcm", level: int = logging.INFO) -> logging.Logger:
     global _CONFIGURED
@@ -20,5 +24,7 @@ def get_logger(name: str = "mcm", level: int = logging.INFO) -> logging.Logger:
             datefmt="[%X]",
             handlers=[RichHandler(console=console, rich_tracebacks=True, show_path=False)],
         )
+        for noisy in _NOISY:
+            logging.getLogger(noisy).setLevel(logging.WARNING)
         _CONFIGURED = True
     return logging.getLogger(name)

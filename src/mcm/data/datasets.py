@@ -148,14 +148,22 @@ def _fallback_transform(img: Image.Image, size: int) -> torch.Tensor:
     )
 
 
-def make_collate_fn(tokenizer: Any | None = None, max_length: int = 77, image_size: int = CLIP_SIZE):
-    """Build a collate function.
+class Collator:
+    """Collates items into a Batch, tokenizing text if a tokenizer is supplied.
 
-    max_length defaults to 77 — CLIP's text encoder context limit. A DistilBERT
-    or RoBERTa branch should pass its own larger value.
+    Deliberately a class rather than a closure: macOS spawns dataloader workers
+    instead of forking them, so the collate callable must be picklable. A nested
+    function is not, and using one fails only once ``num_workers > 0``.
     """
 
-    def collate(items: list[dict[str, Any]]) -> Batch:
+    def __init__(
+        self, tokenizer: Any | None = None, max_length: int = 77, image_size: int = CLIP_SIZE
+    ):
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.image_size = image_size
+
+    def __call__(self, items: list[dict[str, Any]]) -> Batch:
         texts = [it["text"] for it in items]
 
         pixels = []
@@ -164,7 +172,7 @@ def make_collate_fn(tokenizer: Any | None = None, max_length: int = 77, image_si
             # Zero tensor, not a black image: paired with image_mask=False it is
             # never attended to, so its actual value is irrelevant — but keeping
             # it zero makes an accidental unmasked read obvious in debugging.
-            pixels.append(pv if pv is not None else torch.zeros(3, image_size, image_size))
+            pixels.append(pv if pv is not None else torch.zeros(3, self.image_size, self.image_size))
 
         batch = Batch(
             uid=[it["uid"] for it in items],
@@ -177,19 +185,28 @@ def make_collate_fn(tokenizer: Any | None = None, max_length: int = 77, image_si
             label_misinfo_6=_label_tensor(items, "label_misinfo_6"),
         )
 
-        if tokenizer is not None:
+        if self.tokenizer is not None:
             batch.text_inputs = dict(
-                tokenizer(
+                self.tokenizer(
                     texts,
                     padding=True,
                     truncation=True,
-                    max_length=max_length,
+                    max_length=self.max_length,
                     return_tensors="pt",
                 )
             )
         return batch
 
-    return collate
+
+def make_collate_fn(
+    tokenizer: Any | None = None, max_length: int = 77, image_size: int = CLIP_SIZE
+) -> Collator:
+    """Build a collate function.
+
+    max_length defaults to 77 — CLIP's text encoder context limit. A DistilBERT
+    or RoBERTa branch should pass its own larger value.
+    """
+    return Collator(tokenizer=tokenizer, max_length=max_length, image_size=image_size)
 
 
 def _label_tensor(items: list[dict[str, Any]], key: str) -> torch.Tensor:
