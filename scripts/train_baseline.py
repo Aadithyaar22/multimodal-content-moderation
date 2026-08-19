@@ -41,6 +41,13 @@ def main() -> int:
     ap.add_argument("--dropout", type=float, default=0.3)
     ap.add_argument("--patience", type=int, default=10)
     ap.add_argument("--no-class-weights", action="store_true")
+    ap.add_argument("--weight-decay", type=float, default=1e-4)
+    # Cross-attention only; ignored by the pooled arms.
+    ap.add_argument("--d-model", type=int, default=512)
+    ap.add_argument("--n-layers", type=int, default=2)
+    ap.add_argument("--fusion-dropout", type=float, default=0.1)
+    ap.add_argument("--warmup-epochs", type=int, default=0)
+    ap.add_argument("--grad-clip", type=float, default=0.0)
     args = ap.parse_args()
 
     arches = list(ARCHITECTURES) if args.all_arms else args.arch
@@ -63,6 +70,12 @@ def main() -> int:
                 dropout=args.dropout,
                 patience=args.patience,
                 use_class_weights=not args.no_class_weights,
+                weight_decay=args.weight_decay,
+                d_model=args.d_model,
+                n_layers=args.n_layers,
+                fusion_dropout=args.fusion_dropout,
+                warmup_epochs=args.warmup_epochs,
+                grad_clip=args.grad_clip,
             )
             console.rule(f"{arch}  seed={seed}  [{'+'.join(args.datasets)}]")
             runs.append((arch, train(cfg, save_dir=out_dir)))

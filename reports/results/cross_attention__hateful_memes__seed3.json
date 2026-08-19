@@ -1,0 +1,120 @@
+{
+  "config": {
+    "arch": "cross_attention",
+    "datasets": [
+      "hateful_memes"
+    ],
+    "epochs": 40,
+    "batch_size": 128,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "hidden_dim": 256,
+    "dropout": 0.3,
+    "seed": 3,
+    "patience": 8,
+    "normalize_input": true,
+    "task_weights": [
+      1.0,
+      1.0
+    ],
+    "use_class_weights": true,
+    "n_layers": 2,
+    "n_heads": 8,
+    "fusion_dropout": 0.1
+  },
+  "best_epoch": 7,
+  "best_val_score": 0.6279627238759447,
+  "train_seconds": 650.9811420440674,
+  "val": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 500,
+      "accuracy": 0.63,
+      "macro_f1": 0.6279627238759447,
+      "weighted_f1": 0.6276323547747465,
+      "auc": 0.6576306988206302,
+      "per_class": {
+        "benign": {
+          "precision": 0.6619047619047619,
+          "recall": 0.549407114624506,
+          "f1": 0.6004319654427646,
+          "support": 253
+        },
+        "harmful": {
+          "precision": 0.6068965517241379,
+          "recall": 0.7125506072874493,
+          "f1": 0.6554934823091247,
+          "support": 247
+        }
+      },
+      "confusion": [
+        [
+          139,
+          114
+        ],
+        [
+          71,
+          176
+        ]
+      ],
+      "ece": 0.07234003078937529
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  },
+  "test": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 1000,
+      "accuracy": 0.641,
+      "macro_f1": 0.6402052133162155,
+      "weighted_f1": 0.6398670062167328,
+      "auc": 0.6810604241696678,
+      "per_class": {
+        "benign": {
+          "precision": 0.6704288939051919,
+          "recall": 0.5823529411764706,
+          "f1": 0.6232948583420777,
+          "support": 510
+        },
+        "harmful": {
+          "precision": 0.6175942549371634,
+          "recall": 0.7020408163265306,
+          "f1": 0.6571155682903533,
+          "support": 490
+        }
+      },
+      "confusion": [
+        [
+          297,
+          213
+        ],
+        [
+          146,
+          344
+        ]
+      ],
+      "ece": 0.06236440211534498
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  }
+}
