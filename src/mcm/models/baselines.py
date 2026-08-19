@@ -113,7 +113,17 @@ def build_model(arch: str, **kwargs) -> nn.Module:
         return UnimodalModel("text", **kwargs)
     if arch == "late_fusion":
         return LateFusionModel(**kwargs)
+    if arch == "cross_attention":
+        from mcm.models.fusion import CrossAttentionFusion
+
+        return CrossAttentionFusion(**kwargs)
     raise ValueError(f"unknown architecture {arch!r}")
 
 
-ARCHITECTURES = ("cv_only", "nlp_only", "late_fusion")
+#: Arms that consume pooled 512-d embeddings.
+POOLED_ARCHITECTURES = ("cv_only", "nlp_only", "late_fusion")
+
+#: Arms that consume token-level sequences and therefore need the token cache.
+TOKEN_ARCHITECTURES = ("cross_attention",)
+
+ARCHITECTURES = POOLED_ARCHITECTURES + TOKEN_ARCHITECTURES
