@@ -25,8 +25,9 @@ from mcm.data.datasets import class_weights
 from mcm.data.features import load_mixture
 from mcm.data.manifest import load_splits
 from mcm.data.schema import IGNORE_INDEX, MISINFO_3_LABELS, TOXICITY_LABELS
-from mcm.models.baselines import build_model
-from mcm.models.heads import MaskedMultiTaskLoss
+from mcm.data.token_features import load_token_features
+from mcm.models.baselines import TOKEN_ARCHITECTURES, build_model
+from mcm.models.heads import HeadOutput, MaskedMultiTaskLoss
 from mcm.training.metrics import TaskMetrics, evaluate_task
 from mcm.utils.device import empty_cache, get_device
 from mcm.utils.logging import get_logger
@@ -49,6 +50,10 @@ class TrainConfig:
     normalize_input: bool = True
     task_weights: tuple[float, float] = (1.0, 1.0)
     use_class_weights: bool = True
+    # Cross-attention only (PROJECT_CONTEXT.md Sec. 4 specifies 2 layers).
+    n_layers: int = 2
+    n_heads: int = 8
+    fusion_dropout: float = 0.1
 
     def tag(self) -> str:
         return f"{self.arch}__{'+'.join(self.datasets)}__seed{self.seed}"
@@ -96,27 +101,83 @@ class SplitTensors:
         return len(self.uid)
 
 
+class TokenSplitTensors:
+    """Labels resident on device; token features streamed from a memory map.
+
+    The pooled cache fits in memory whole. Token features are ~100x larger, so
+    only the labels are kept resident and each batch's features are copied from
+    the memmap on demand. Per-epoch cost is higher than the pooled arms but far
+    below re-running CLIP, which is what an uncached implementation would do.
+    """
+
+    def __init__(self, frame: pd.DataFrame, datasets: list[str], split: str, device: torch.device):
+        if len(datasets) != 1:
+            # Each dataset's token cache is a separate memmap; concatenating
+            # them would defeat the memory mapping. The cross-attention arm is
+            # evaluated per benchmark anyway, which is how the ablation table
+            # reports it.
+            raise ValueError(
+                f"cross-attention runs take exactly one dataset at a time, got {datasets}"
+            )
+        self.cache = load_token_features(datasets[0], split, frame)
+        self.device = device
+        self.uid = frame["uid"].tolist()
+        self.dataset = frame["dataset"].tolist()
+        self.label_toxicity = torch.tensor(
+            frame["label_toxicity"].to_numpy(), dtype=torch.long, device=device
+        )
+        self.label_misinfo = torch.tensor(
+            frame["label_misinfo_3"].to_numpy(), dtype=torch.long, device=device
+        )
+        self.frame = frame
+
+    def __len__(self) -> int:
+        return len(self.uid)
+
+    def batch(self, idx: torch.Tensor) -> dict[str, torch.Tensor]:
+        return self.cache.batch(idx.cpu().numpy(), self.device)
+
+
+def _is_token_arch(arch: str) -> bool:
+    return arch in TOKEN_ARCHITECTURES
+
+
 def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
     set_seed(cfg.seed)
     device = get_device()
 
+    token_mode = _is_token_arch(cfg.arch)
+    holder = TokenSplitTensors if token_mode else SplitTensors
+
     frames = {s: load_splits(cfg.datasets, s) for s in ("train", "val", "test")}
-    data = {s: SplitTensors(frames[s], cfg.datasets, s, device) for s in frames}
+    data = {s: holder(frames[s], cfg.datasets, s, device) for s in frames}
     log.info(
-        "%s | train=%d val=%d test=%d on %s",
+        "%s | train=%d val=%d test=%d on %s%s",
         cfg.tag(),
         len(data["train"]),
         len(data["val"]),
         len(data["test"]),
         device,
+        " (token features)" if token_mode else "",
     )
 
-    model = build_model(
-        cfg.arch,
-        hidden_dim=cfg.hidden_dim,
-        dropout=cfg.dropout,
-        normalize_input=cfg.normalize_input,
-    ).to(device)
+    if token_mode:
+        model = build_model(
+            cfg.arch,
+            n_layers=cfg.n_layers,
+            n_heads=cfg.n_heads,
+            dropout=cfg.fusion_dropout,
+            head_hidden=cfg.hidden_dim,
+            head_dropout=cfg.dropout,
+        ).to(device)
+        log.info("  trainable params: %.2fM", sum(p.numel() for p in model.parameters()) / 1e6)
+    else:
+        model = build_model(
+            cfg.arch,
+            hidden_dim=cfg.hidden_dim,
+            dropout=cfg.dropout,
+            normalize_input=cfg.normalize_input,
+        ).to(device)
 
     tox_w = mis_w = None
     if cfg.use_class_weights:
@@ -141,11 +202,7 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
 
         for start in range(0, len(order), cfg.batch_size):
             idx = order[start : start + cfg.batch_size]
-            out = model(
-                image_emb=data["train"].image_emb[idx],
-                text_emb=data["train"].text_emb[idx],
-                image_mask=data["train"].image_mask[idx],
-            )
+            out = _forward(model, data["train"], idx, token_mode)
             loss = criterion(
                 out, data["train"].label_toxicity[idx], data["train"].label_misinfo[idx]
             )
@@ -154,10 +211,10 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
             loss.total.backward()
             optimizer.step()
 
-            epoch_loss += float(loss.total)
+            epoch_loss += float(loss.total.detach())
             n_batches += 1
 
-        val_metrics = evaluate(model, data["val"])
+        val_metrics = evaluate(model, data["val"], token_mode=token_mode)
         score = selection_score(val_metrics)
 
         if score > best_score:
@@ -167,7 +224,10 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
         else:
             stale += 1
 
-        if epoch % 10 == 0 or epoch == 1:
+        # Token arms run ~40s an epoch against ~0.2s for the pooled ones, so a
+        # fixed interval either spams one or leaves the other looking hung.
+        log_every = 2 if token_mode else 10
+        if epoch % log_every == 0 or epoch == 1:
             log.info(
                 "  epoch %3d  loss=%.4f  val_score=%.4f  (best %.4f @ %d)",
                 epoch,
@@ -190,8 +250,8 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
         best_epoch=best_epoch,
         best_val_score=best_score,
         train_seconds=elapsed,
-        val={k: v.to_dict() for k, v in evaluate(model, data["val"]).items()},
-        test={k: v.to_dict() for k, v in evaluate(model, data["test"]).items()},
+        val={k: v.to_dict() for k, v in evaluate(model, data["val"], token_mode).items()},
+        test={k: v.to_dict() for k, v in evaluate(model, data["test"], token_mode).items()},
     )
 
     log.info("  done in %.1fs | best val %.4f @ epoch %d", elapsed, best_score, best_epoch)
@@ -208,12 +268,37 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
     return result
 
 
-@torch.no_grad()
-def evaluate(model: torch.nn.Module, data: SplitTensors) -> dict[str, TaskMetrics]:
-    model.eval()
-    out = model(
-        image_emb=data.image_emb, text_emb=data.text_emb, image_mask=data.image_mask
+def _forward(model, data, idx: torch.Tensor, token_mode: bool):
+    """One forward pass, dispatching on whether the arm consumes tokens."""
+    if token_mode:
+        return model(**data.batch(idx))
+    return model(
+        image_emb=data.image_emb[idx],
+        text_emb=data.text_emb[idx],
+        image_mask=data.image_mask[idx],
     )
+
+
+@torch.no_grad()
+def evaluate(
+    model: torch.nn.Module, data, token_mode: bool = False, batch_size: int = 256
+) -> dict[str, TaskMetrics]:
+    model.eval()
+    if token_mode:
+        # Token features cannot be evaluated in one shot — the whole split's
+        # memmap would have to be materialized at once.
+        chunks = []
+        for start in range(0, len(data), batch_size):
+            idx = torch.arange(start, min(start + batch_size, len(data)))
+            chunks.append(_forward(model, data, idx, True))
+        out = HeadOutput(
+            toxicity_logits=torch.cat([c.toxicity_logits for c in chunks]),
+            misinfo_logits=torch.cat([c.misinfo_logits for c in chunks]),
+        )
+    else:
+        out = model(
+            image_emb=data.image_emb, text_emb=data.text_emb, image_mask=data.image_mask
+        )
     return {
         "toxicity": evaluate_task(
             "toxicity",
@@ -242,14 +327,18 @@ def selection_score(metrics: dict[str, TaskMetrics]) -> float:
 
 
 @torch.no_grad()
-def predict_logits(model: torch.nn.Module, data: SplitTensors) -> dict[str, np.ndarray]:
+def predict_logits(
+    model: torch.nn.Module, data, token_mode: bool = False, batch_size: int = 256
+) -> dict[str, np.ndarray]:
     """Raw logits, kept for the fusion-vs-unimodal delta and error analysis."""
     model.eval()
-    out = model(image_emb=data.image_emb, text_emb=data.text_emb, image_mask=data.image_mask)
-    return {
-        "toxicity": out.toxicity_logits.float().cpu().numpy(),
-        "misinformation": out.misinfo_logits.float().cpu().numpy(),
-    }
+    tox, mis = [], []
+    for start in range(0, len(data), batch_size):
+        idx = torch.arange(start, min(start + batch_size, len(data)))
+        out = _forward(model, data, idx, token_mode)
+        tox.append(out.toxicity_logits.float().cpu().numpy())
+        mis.append(out.misinfo_logits.float().cpu().numpy())
+    return {"toxicity": np.concatenate(tox), "misinformation": np.concatenate(mis)}
 
 
 def save_result(result: RunResult, save_dir: Path, tag: str) -> Path:
