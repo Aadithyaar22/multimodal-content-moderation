@@ -11,6 +11,7 @@ than a single number that might be luck.
 from __future__ import annotations
 
 import json
+import math
 import random
 import time
 from dataclasses import asdict, dataclass, field
@@ -54,6 +55,15 @@ class TrainConfig:
     n_layers: int = 2
     n_heads: int = 8
     fusion_dropout: float = 0.1
+    d_model: int = 512
+    # Transformers are unstable under the flat high LR that suits a small MLP
+    # head, so the token arms get warmup, cosine decay, and gradient clipping.
+    warmup_epochs: int = 0
+    grad_clip: float = 0.0
+
+    def tag_with(self, **overrides) -> str:
+        parts = [f"{k}{v}" for k, v in sorted(overrides.items())]
+        return f"{self.arch}__{'+'.join(self.datasets)}__{'_'.join(parts)}__seed{self.seed}"
 
     def tag(self) -> str:
         return f"{self.arch}__{'+'.join(self.datasets)}__seed{self.seed}"
@@ -164,13 +174,19 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
     if token_mode:
         model = build_model(
             cfg.arch,
+            d_model=cfg.d_model,
             n_layers=cfg.n_layers,
             n_heads=cfg.n_heads,
             dropout=cfg.fusion_dropout,
             head_hidden=cfg.hidden_dim,
             head_dropout=cfg.dropout,
         ).to(device)
-        log.info("  trainable params: %.2fM", sum(p.numel() for p in model.parameters()) / 1e6)
+        n_params = sum(p.numel() for p in model.parameters())
+        log.info(
+            "  trainable params: %.2fM (%.0f per training sample)",
+            n_params / 1e6,
+            n_params / max(1, len(data["train"])),
+        )
     else:
         model = build_model(
             cfg.arch,
@@ -190,6 +206,7 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
         toxicity_weight=tox_w, misinfo_weight=mis_w, task_weights=cfg.task_weights
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+    scheduler = _build_scheduler(optimizer, cfg)
 
     best_score, best_epoch, best_state = -1.0, -1, None
     stale = 0
@@ -209,10 +226,15 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
 
             optimizer.zero_grad(set_to_none=True)
             loss.total.backward()
+            if cfg.grad_clip > 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
             optimizer.step()
 
             epoch_loss += float(loss.total.detach())
             n_batches += 1
+
+        if scheduler is not None:
+            scheduler.step()
 
         val_metrics = evaluate(model, data["val"], token_mode=token_mode)
         score = selection_score(val_metrics)
@@ -266,6 +288,26 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
 
     empty_cache()
     return result
+
+
+def _build_scheduler(optimizer, cfg: TrainConfig):
+    """Linear warmup then cosine decay, for the token arms only.
+
+    A transformer trained from scratch on a small dataset is unstable in its
+    first epochs at the flat learning rate that suits a two-layer MLP head.
+    Returning None when warmup is off keeps the pooled arms byte-identical to
+    the runs already recorded.
+    """
+    if cfg.warmup_epochs <= 0:
+        return None
+
+    def lr_scale(epoch: int) -> float:
+        if epoch < cfg.warmup_epochs:
+            return (epoch + 1) / cfg.warmup_epochs
+        progress = (epoch - cfg.warmup_epochs) / max(1, cfg.epochs - cfg.warmup_epochs)
+        return 0.5 * (1.0 + math.cos(math.pi * min(1.0, progress)))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_scale)
 
 
 def _forward(model, data, idx: torch.Tensor, token_mode: bool):

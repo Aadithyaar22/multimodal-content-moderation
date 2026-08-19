@@ -1,0 +1,120 @@
+{
+  "config": {
+    "arch": "cross_attention",
+    "datasets": [
+      "hateful_memes"
+    ],
+    "epochs": 40,
+    "batch_size": 128,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "hidden_dim": 256,
+    "dropout": 0.3,
+    "seed": 1,
+    "patience": 8,
+    "normalize_input": true,
+    "task_weights": [
+      1.0,
+      1.0
+    ],
+    "use_class_weights": true,
+    "n_layers": 2,
+    "n_heads": 8,
+    "fusion_dropout": 0.1
+  },
+  "best_epoch": 16,
+  "best_val_score": 0.6455903023895624,
+  "train_seconds": 987.8447639942169,
+  "val": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 500,
+      "accuracy": 0.646,
+      "macro_f1": 0.6455903023895624,
+      "weighted_f1": 0.6454457032329373,
+      "auc": 0.6900993743099005,
+      "per_class": {
+        "benign": {
+          "precision": 0.6652173913043479,
+          "recall": 0.6047430830039525,
+          "f1": 0.6335403726708074,
+          "support": 253
+        },
+        "harmful": {
+          "precision": 0.6296296296296297,
+          "recall": 0.6882591093117408,
+          "f1": 0.6576402321083172,
+          "support": 247
+        }
+      },
+      "confusion": [
+        [
+          153,
+          100
+        ],
+        [
+          77,
+          170
+        ]
+      ],
+      "ece": 0.10488800692558287
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  },
+  "test": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 1000,
+      "accuracy": 0.652,
+      "macro_f1": 0.6519944319109106,
+      "weighted_f1": 0.6519665914654633,
+      "auc": 0.7099479791916767,
+      "per_class": {
+        "benign": {
+          "precision": 0.6666666666666666,
+          "recall": 0.6352941176470588,
+          "f1": 0.6506024096385542,
+          "support": 510
+        },
+        "harmful": {
+          "precision": 0.6381322957198443,
+          "recall": 0.6693877551020408,
+          "f1": 0.6533864541832669,
+          "support": 490
+        }
+      },
+      "confusion": [
+        [
+          324,
+          186
+        ],
+        [
+          162,
+          328
+        ]
+      ],
+      "ece": 0.11762334835529328
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  }
+}
