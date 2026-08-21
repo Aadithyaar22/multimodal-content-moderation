@@ -184,6 +184,13 @@ body {
   }
 }
 
+/* Sheen sweep across the primary button on hover, from the Stitch export. */
+@keyframes shimmer {
+  100% {
+    transform: skewX(-12deg) translateX(200%);
+  }
+}
+
 @keyframes drift {
   0%,
   100% {
