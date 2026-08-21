@@ -14,6 +14,7 @@ import { getExplanation, getItem } from "@/lib/api";
 import type { Explanation, ItemDetail } from "@/lib/types";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
+import { EvidencePanel } from "@/components/EvidencePanel";
 import { DecisionBar } from "@/components/DecisionBar";
 import {
   EmergentBadge,
@@ -97,6 +98,19 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
         />
       </div>
 
+      {/* Evidence leads the explainability section: the Grad-CAM regions and the
+          attention connectors are the most direct evidence of what the model
+          actually related, so they sit above the per-head breakdown. */}
+      {item.attributions && (
+        <div className="animate-rise">
+          <EvidencePanel
+            attributions={item.attributions}
+            imageUrl={item.input.image_url}
+            caption={item.input.text}
+          />
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <GlassPanel title="Content" className="animate-rise">
           <p className="font-editorial text-lg leading-relaxed text-on-surface">
@@ -106,13 +120,6 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
             <p className="mt-4 border-l-2 border-outline-variant pl-3 text-sm text-outline">
               Text detected in image: {item.input.ocr_text}
             </p>
-          )}
-          {item.input.has_image && (
-            <div className="mt-6 flex aspect-video items-center justify-center rounded border border-[var(--color-glass-border)] bg-surface-dim">
-              <p className="label-tech text-outline">
-                Evidence image · blurred pending review
-              </p>
-            </div>
           )}
         </GlassPanel>
 

@@ -21,6 +21,17 @@ import type {
   Stats,
 } from "./types";
 
+/**
+ * Stand-in evidence image for the fixtures.
+ *
+ * Deliberately an abstract SVG scene rather than a photograph. The fixtures
+ * must not ship anything resembling real footage of a real person, and an
+ * abstract frame is still spatial enough to evaluate the Grad-CAM overlay and
+ * the region boxes against.
+ */
+const PLACEHOLDER_IMAGE =
+  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc4MDAnIGhlaWdodD0nNjAwJyB2aWV3Qm94PScwIDAgODAwIDYwMCc+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9J3dhbGwnIHgxPScwJyB5MT0nMCcgeDI9JzAnIHkyPScxJz4KPHN0b3Agb2Zmc2V0PScwJScgc3RvcC1jb2xvcj0nIzNhM2EzYScvPjxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzFhMWExYScvPgo8L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9J2Rvb3InIHgxPScwJyB5MT0nMCcgeDI9JzEnIHkyPScwJz4KPHN0b3Agb2Zmc2V0PScwJScgc3RvcC1jb2xvcj0nIzRhNGE0YScvPjxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzJjMmMyYycvPgo8L2xpbmVhckdyYWRpZW50Pgo8L2RlZnM+CjxyZWN0IHdpZHRoPSc4MDAnIGhlaWdodD0nNjAwJyBmaWxsPSd1cmwoI3dhbGwpJy8+CjxyZWN0IHg9JzAnIHk9JzQ3MCcgd2lkdGg9JzgwMCcgaGVpZ2h0PScxMzAnIGZpbGw9JyMxNDE0MTQnLz4KPHJlY3QgeD0nMzMwJyB5PScxMzAnIHdpZHRoPScyMTUnIGhlaWdodD0nNDAwJyBmaWxsPSd1cmwoI2Rvb3IpJyBzdHJva2U9JyM1NjU2NTYnIHN0cm9rZS13aWR0aD0nMycvPgo8Y2lyY2xlIGN4PSc1MTUnIGN5PSczNDAnIHI9JzcnIGZpbGw9JyM4ZThlOGUnLz4KPHJlY3QgeD0nMzUyJyB5PScxNjAnIHdpZHRoPScxNzAnIGhlaWdodD0nMTUwJyBmaWxsPScjMjMyMzIzJyBzdHJva2U9JyM0YTRhNGEnIHN0cm9rZS13aWR0aD0nMicvPgo8cmVjdCB4PSc2MCcgeT0nMzMwJyB3aWR0aD0nMTUwJyBoZWlnaHQ9JzE3MCcgZmlsbD0nIzI0MjQyNCcgc3Ryb2tlPScjM2QzZDNkJyBzdHJva2Utd2lkdGg9JzInLz4KPHJlY3QgeD0nOTUnIHk9JzM3Micgd2lkdGg9JzgwJyBoZWlnaHQ9JzkwJyBmaWxsPScjMmYyZjJmJy8+CjxlbGxpcHNlIGN4PSc0MzcnIGN5PSc1NDgnIHJ4PScxOTAnIHJ5PScyNicgZmlsbD0nIzBlMGUwZScgb3BhY2l0eT0nMC43NScvPgo8L3N2Zz4=";
+
 const now = Date.parse("2026-08-21T09:14:22Z");
 const ago = (s: number) => new Date(now - s * 1000).toISOString();
 
@@ -181,7 +192,7 @@ function detailFor(item: QueueItem): ItemDetail {
     input: {
       text: item.text_preview,
       has_image: true,
-      image_url: null,
+      image_url: PLACEHOLDER_IMAGE,
       ocr_text: null,
       modalities: ["image", "text"],
     },
