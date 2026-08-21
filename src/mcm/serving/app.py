@@ -160,11 +160,22 @@ async def analyze(
     timings: dict[str, int] = {}
     per_task: dict[str, tuple] = {}
 
+    has_text = bool(text and text.strip())
+
     for task in bundle.tasks:
         arms, task_timings = run_arms(bundle, task, pil, text or "")
         per_task[task] = arms
-        modality["cv_only"][task] = round(arms.cv_only, 4)
-        modality["nlp_only"][task] = round(arms.nlp_only, 4)
+
+        # A single-modality arm is only reported when its modality is actually
+        # present. Run on a zeroed input it still emits a confident number —
+        # measured at 0.69 for a text-only item — but that is the head's bias on
+        # a null vector, not evidence about the content. Publishing it as
+        # "vision-only analysis" of an item with no vision would fabricate a
+        # signal, and the emergent comparison downstream would be reading it.
+        if pil is not None:
+            modality["cv_only"][task] = round(arms.cv_only, 4)
+        if has_text:
+            modality["nlp_only"][task] = round(arms.nlp_only, 4)
         modality["fusion"][task] = round(arms.fusion, 4)
         heads[task] = {
             "label": max(arms.fusion_probs, key=arms.fusion_probs.get),
@@ -178,8 +189,16 @@ async def analyze(
     # reason the item is in the queue at all.
     lead_task = max(per_task, key=lambda t: per_task[t].fusion)
     lead = per_task[lead_task]
-    is_emergent, delta = emergent_signal(lead)
     label, action = verdict_for(lead.fusion)
+
+    # Emergence is only meaningful when both modalities were actually present.
+    # With one missing there is no "neither alone" to establish, and the absent
+    # arm's reading is a null-input bias rather than a score to compare against.
+    both_modalities = pil is not None and has_text
+    if both_modalities:
+        is_emergent, delta = emergent_signal(lead)
+    else:
+        is_emergent, delta = False, 0.0
 
     timings["total"] = int((time.perf_counter() - started) * 1000)
 
@@ -214,7 +233,12 @@ async def analyze(
                 "Neither modality alone crosses the threshold; the signal "
                 "appears only jointly."
                 if is_emergent
-                else None
+                else (
+                    None
+                    if both_modalities
+                    else "Only one modality was supplied, so no cross-modal "
+                    "comparison was made."
+                )
             ),
         },
         # Step 5 of the build order; declared here so the contract is stable.

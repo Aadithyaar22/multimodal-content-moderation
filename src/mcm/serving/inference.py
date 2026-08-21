@@ -62,6 +62,9 @@ class ModelBundle:
 
     clip: FrozenCLIP
     arms: dict[str, dict[str, torch.nn.Module]] = field(default_factory=dict)
+    #: Per-arm temperature from scripts/calibrate.py, applied to logits before
+    #: softmax. Defaults to 1.0 for any checkpoint predating calibration.
+    temperatures: dict[str, dict[str, float]] = field(default_factory=dict)
     device: torch.device = field(default_factory=get_device)
     loaded_at: float = 0.0
 
@@ -87,6 +90,7 @@ def load_bundle(checkpoint_dir: Path | None = None) -> ModelBundle:
 
     for task, dataset in TASK_DATASET.items():
         arms: dict[str, torch.nn.Module] = {}
+        temps: dict[str, float] = {}
         for arch in ("cv_only", "nlp_only", "cross_attention"):
             path = checkpoint_dir / f"{arch}__{dataset}.pt"
             if not path.exists():
@@ -98,10 +102,24 @@ def load_bundle(checkpoint_dir: Path | None = None) -> ModelBundle:
             model.load_state_dict(blob["state_dict"])
             model.eval()
             arms[arch] = model
+            temps[arch] = float(blob.get("temperature", 1.0))
+            if temps[arch] == 1.0:
+                log.warning(
+                    "%s/%s has no fitted temperature; its probabilities will be "
+                    "overconfident. Run scripts/calibrate.py",
+                    task,
+                    arch,
+                )
 
         if len(arms) == 3:
             bundle.arms[task] = arms
-            log.info("loaded %s arms for task=%s", len(arms), task)
+            bundle.temperatures[task] = temps
+            log.info(
+                "loaded %s arms for task=%s (T=%s)",
+                len(arms),
+                task,
+                {k: round(v, 2) for k, v in temps.items()},
+            )
         elif arms:
             log.warning(
                 "task=%s has only %s; needs all three arms for the modality "
@@ -141,6 +159,7 @@ def run_arms(
     """Score one item through all three arms of a task."""
     device = bundle.device
     arms = bundle.arms[task]
+    temps = bundle.temperatures.get(task, {})
     timings: dict[str, int] = {}
 
     t0 = time.perf_counter()
@@ -163,8 +182,16 @@ def run_arms(
     image_emb[~image_mask] = 0.0
 
     t1 = time.perf_counter()
-    cv = _prob(arms["cv_only"](image_emb=image_emb, text_emb=pooled.text_emb, image_mask=image_mask), task)
-    nlp = _prob(arms["nlp_only"](image_emb=image_emb, text_emb=pooled.text_emb, image_mask=image_mask), task)
+    cv = _prob(
+        arms["cv_only"](image_emb=image_emb, text_emb=pooled.text_emb, image_mask=image_mask),
+        task,
+        temps.get("cv_only", 1.0),
+    )
+    nlp = _prob(
+        arms["nlp_only"](image_emb=image_emb, text_emb=pooled.text_emb, image_mask=image_mask),
+        task,
+        temps.get("nlp_only", 1.0),
+    )
     timings["unimodal"] = int((time.perf_counter() - t1) * 1000)
 
     t2 = time.perf_counter()
@@ -176,7 +203,7 @@ def run_arms(
     )
     timings["fusion"] = int((time.perf_counter() - t2) * 1000)
 
-    probs = _softmax(fused_out, task)
+    probs = _softmax(fused_out, task, temps.get("cross_attention", 1.0))
     labels = LABELS[task]
 
     return (
@@ -194,8 +221,15 @@ def _logits_for(out, task: str) -> torch.Tensor:
     return out.toxicity_logits if task == "toxicity" else out.misinfo_logits
 
 
-def _softmax(out, task: str) -> torch.Tensor:
-    return F.softmax(_logits_for(out, task).float()[0], dim=-1)
+def _softmax(out, task: str, temperature: float = 1.0) -> torch.Tensor:
+    """Softmax over temperature-scaled logits.
+
+    Dividing by a positive scalar cannot move an argmax, so this changes the
+    probabilities without changing a single prediction — which is the point:
+    the reported ablation stays valid while the confidences become usable for
+    ranking and for the soft-flag threshold.
+    """
+    return F.softmax(_logits_for(out, task).float()[0] / temperature, dim=-1)
 
 
 def _positive_mass(probs: torch.Tensor, task: str) -> float:
@@ -210,8 +244,8 @@ def _positive_mass(probs: torch.Tensor, task: str) -> float:
     return float(1.0 - probs[0])
 
 
-def _prob(out, task: str) -> float:
-    return _positive_mass(_softmax(out, task), task)
+def _prob(out, task: str, temperature: float = 1.0) -> float:
+    return _positive_mass(_softmax(out, task, temperature), task)
 
 
 def emergent_signal(arms: ArmOutputs, threshold: float = THRESHOLD) -> tuple[bool, float]:
