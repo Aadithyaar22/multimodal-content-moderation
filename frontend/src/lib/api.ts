@@ -26,6 +26,20 @@ import type {
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
+/**
+ * Resolve a server-relative path against the API origin.
+ *
+ * The backend returns image_url as "/api/v1/items/{id}/image". Rendered
+ * directly it resolves against the *frontend* origin, so every evidence image
+ * 404s once the app is pointed at a separately-hosted API — which is the
+ * deployed topology, Vercel in front of Render.
+ */
+export function resolveApiUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (/^(https?:|data:|blob:)/.test(path)) return path;
+  return `${BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**

@@ -48,7 +48,7 @@ from mcm.serving.schemas import (
     QueueResponse,
     Stats,
 )
-from mcm.serving.store import Store, utcnow
+from mcm.serving.store import Store, parse_utc, utcnow
 from mcm.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -322,13 +322,7 @@ def submit_decision(item_id: str, body: DecisionRequest) -> DecisionResponse:
         raise HTTPException(404, "item not found")
 
     decided_at = utcnow()
-    elapsed = max(
-        0,
-        int(
-            time.mktime(time.strptime(decided_at[:19], "%Y-%m-%dT%H:%M:%S"))
-            - time.mktime(time.strptime(record["created_at"][:19], "%Y-%m-%dT%H:%M:%S"))
-        ),
-    )
+    elapsed = max(0, int(parse_utc(decided_at) - parse_utc(record["created_at"])))
 
     decision = {**body.model_dump(), "decided_at": decided_at}
     _store.update(
@@ -373,7 +367,7 @@ def queue(
     now = time.time()
     items = []
     for r in records:
-        created = time.mktime(time.strptime(r["created_at"][:19], "%Y-%m-%dT%H:%M:%S"))
+        created = parse_utc(r["created_at"])
         items.append(
             {
                 "item_id": r["item_id"],
