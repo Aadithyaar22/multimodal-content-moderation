@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitDecision } from "@/lib/api";
+import { announceToIsland } from "@/components/DynamicIsland";
 import type { DecisionAction } from "@/lib/types";
 
 const ACTIONS: Array<{ action: DecisionAction; label: string; key: string }> = [
@@ -43,7 +44,8 @@ export function DecisionBar({ itemId }: { itemId: string }) {
         explanation_was_useful: useful ?? undefined,
       });
       setDone(action);
-      setTimeout(() => router.push("/"), 700);
+      announceToIsland(`Recorded: ${action}`);
+      setTimeout(() => router.push("/queue"), 700);
     } finally {
       setPending(null);
     }

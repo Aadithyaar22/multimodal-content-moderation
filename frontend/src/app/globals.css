@@ -45,9 +45,14 @@
   --color-harm: #ffb4ab;
   --color-harm-dim: #93000a;
 
-  /* Typography */
-  --font-display: "Anybody", system-ui, sans-serif;
-  --font-editorial: "Noto Serif", Georgia, serif;
+  /* Typography.
+     Vanguard and Athelas are both commercial faces and cannot be bundled.
+     Athelas ships with macOS, so it resolves natively on the target machine.
+     Vanguard resolves only if installed locally; Anybody at weight 900 italic
+     is the fallback, being the closest free match for that condensed, heavy,
+     raked display cut. Both stacks degrade without layout shift. */
+  --font-display: "Vanguard", "Vanguard CF", "Anybody", system-ui, sans-serif;
+  --font-editorial: "Athelas", "Noto Serif", Georgia, "Times New Roman", serif;
   --font-body: "Inter", system-ui, sans-serif;
 
   /* Motion — fast out, long settle */
@@ -121,6 +126,28 @@ body {
   font-feature-settings: "tnum";
 }
 
+/* The Vanguard display treatment: oversized, raked, tightly tracked.
+   Anybody is a variable font, so when it is the one resolving, its width axis
+   is compressed to approximate Vanguard's condensed cut rather than leaving it
+   at a default width that would read noticeably wider. */
+@utility display-vanguard {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.035em;
+  font-variation-settings: "wdth" 87;
+  line-height: 0.86;
+}
+
+/* Athelas italic for subtitles — the editorial voice against the display shout. */
+@utility subtitle-athelas {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
 /* ---------------------------------------------------------------------------
    Motion
 --------------------------------------------------------------------------- */
@@ -186,6 +213,231 @@ body {
     radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04), transparent 45%),
     radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.03), transparent 40%);
   animation: drift 24s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Liquid metal field.
+
+   Pure black and pure white masses, blurred far past any edge so no boundary
+   is ever hard. Layers drift on independent, deliberately non-harmonic periods
+   so the field never visibly loops. Only transform and opacity animate.
+--------------------------------------------------------------------------- */
+
+@keyframes molten-a {
+  0%,
+  100% {
+    transform: translate3d(-8%, -4%, 0) scale(1.1) rotate(0deg);
+  }
+  33% {
+    transform: translate3d(6%, 8%, 0) scale(1.35) rotate(8deg);
+  }
+  66% {
+    transform: translate3d(10%, -6%, 0) scale(1.15) rotate(-6deg);
+  }
+}
+
+@keyframes molten-b {
+  0%,
+  100% {
+    transform: translate3d(12%, 10%, 0) scale(1.25) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(-10%, -8%, 0) scale(1.5) rotate(-12deg);
+  }
+}
+
+@keyframes molten-c {
+  0%,
+  100% {
+    transform: translate3d(0, 12%, 0) scale(1.4);
+  }
+  50% {
+    transform: translate3d(-14%, -10%, 0) scale(1.1);
+  }
+}
+
+@keyframes sheen-drift {
+  0%,
+  100% {
+    transform: translate3d(-20%, 0, 0) rotate(-8deg);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(20%, 6%, 0) rotate(6deg);
+    opacity: 0.85;
+  }
+}
+
+.liquid-layer {
+  position: absolute;
+  inset: -40%;
+  will-change: transform;
+}
+
+/* Stops are pushed toward the extremes rather than spread evenly. An even ramp
+   fills most of the frame with mid-grey, which is both the least interesting
+   part of a metal surface and the range where difference-blended type loses all
+   contrast. */
+.liquid-a {
+  background: radial-gradient(
+    ellipse 44% 36% at 32% 42%,
+    #ffffff 0%,
+    #ffffff 18%,
+    rgba(255, 255, 255, 0.6) 42%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  filter: blur(90px);
+  animation: molten-a 34s ease-in-out infinite;
+}
+
+.liquid-b {
+  background: radial-gradient(
+    ellipse 40% 46% at 72% 70%,
+    #ffffff 0%,
+    rgba(255, 255, 255, 0.55) 40%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  filter: blur(110px);
+  animation: molten-b 47s ease-in-out infinite;
+}
+
+/* A black mass moving through the white ones is what carves the dark channels
+   and keeps the field from flattening into an even glow. */
+.liquid-c {
+  background: radial-gradient(
+    ellipse 52% 34% at 50% 24%,
+    #000000 0%,
+    rgba(0, 0, 0, 0.85) 45%,
+    rgba(0, 0, 0, 0) 75%
+  );
+  filter: blur(80px);
+  animation: molten-c 41s ease-in-out infinite;
+}
+
+.liquid-sheen {
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(
+    104deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 47%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.55) 53%,
+    transparent 70%
+  );
+  filter: blur(58px);
+  mix-blend-mode: overlay;
+  animation: sheen-drift 29s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.liquid-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Type that inverts as it crosses a boundary. This is what makes the black and
+   white read as one continuous surface rather than two stacked regions.
+
+   It is reserved for display type only. Difference blending drives contrast to
+   zero wherever the background is mid-grey — white over rgb(128,128,128)
+   renders as rgb(128,128,128) — which oversized letterforms survive on sheer
+   mass but body copy does not. Small text uses `.on-liquid` instead. */
+@utility blend-invert {
+  mix-blend-mode: difference;
+  color: #ffffff;
+}
+
+/* Legible over any part of the molten field.
+   A tight dark halo rather than a panel: it holds contrast across black, white
+   and everything between, without cutting a visible box into the surface and
+   breaking the continuity the field exists to create. */
+@utility on-liquid {
+  color: #ffffff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.9),
+    0 2px 12px rgba(0, 0, 0, 0.7),
+    0 0 32px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-layer,
+  .liquid-sheen {
+    animation: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dynamic Island.
+
+   One continuously-morphing container. The shape animates; the contents only
+   fade, so nothing ever appears mid-transition at the wrong width.
+--------------------------------------------------------------------------- */
+
+.island {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    padding 420ms var(--ease-entrance),
+    background 420ms var(--ease-entrance),
+    border-color 420ms var(--ease-entrance);
+}
+
+.island[data-expanded="true"] {
+  padding-right: 1.15rem;
+  background: rgba(0, 0, 0, 0.7);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.island-divider {
+  width: 1px;
+  height: 16px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* The morphing region. Animating max-width rather than width lets the content
+   size itself, so the island fits its message instead of a guessed number. */
+.island-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-width 460ms var(--ease-entrance),
+    opacity 240ms var(--ease-entrance);
+}
+
+.island-slot-open {
+  max-width: 22rem;
+  opacity: 1;
+  /* Contents fade in only after the shape has begun opening. */
+  transition-delay: 0ms, 140ms;
+}
+
+@media (max-width: 640px) {
+  .island {
+    gap: 0.35rem;
+    padding: 0.4rem 0.6rem;
+  }
+  .island-slot-open {
+    max-width: 10rem;
+  }
 }
 
 /* ---------------------------------------------------------------------------

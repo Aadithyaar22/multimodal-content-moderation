@@ -46,7 +46,7 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
     return (
       <GlassPanel title="Not found">
         <p className="text-sm text-on-surface-variant">{error}</p>
-        <Link href="/" className="label-tech mt-4 inline-block underline">
+        <Link href="/queue" className="label-tech mt-4 inline-block underline">
           Back to queue
         </Link>
       </GlassPanel>
@@ -72,11 +72,11 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
   return (
     <div className="space-y-8">
       <header className="animate-rise">
-        <Link href="/" className="label-tech text-outline hover:text-on-surface">
+        <Link href="/queue" className="label-tech text-outline hover:text-on-surface">
           ← Queue
         </Link>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-4xl font-black tracking-tight md:text-5xl">
+          <h1 className="display-vanguard text-[clamp(2rem,5vw,3.5rem)]">
             {item.item_id.replace("itm_", "").toUpperCase()}
           </h1>
           <VerdictBadge label={item.verdict.label} />

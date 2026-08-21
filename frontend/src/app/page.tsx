@@ -1,201 +1,80 @@
-"use client";
-
 /**
- * Review queue — the default route and where moderators actually work.
+ * Landing page.
  *
- * Ranked by priority, never chronological: the ordering is the product.
+ * The liquid-metal field runs full strength here. The display title sits in
+ * difference blend mode so it inverts as the molten boundary drifts beneath it
+ * — one continuous surface rather than a dark page with a light panel on it.
  *
- * Motion here is deliberately restrained. A moderator scans this list for hours
- * through distressing content, and a flourish costing 300ms is paid on every
- * item. The spectacle belongs on the detail and analyze views; the queue's calm
- * is what makes those land.
+ * Everything smaller uses `.on-liquid` instead. Difference blending drives
+ * contrast to zero over mid-grey, which a 13rem letterform survives and body
+ * copy does not, so the effect is spent where it reads and dropped where it
+ * would cost legibility.
+ *
+ * The page also states plainly what the system is for. A moderation tool that
+ * opens by implying it decides things sets the wrong expectation before anyone
+ * has seen a verdict.
  */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { getQueue } from "@/lib/api";
-import type { QueueFilters, QueueItem } from "@/lib/types";
-import {
-  ConfidenceBar,
-  EmergentBadge,
-  GlassPanel,
-  Skeleton,
-  VerdictBadge,
-  relativeAge,
-} from "@/components/ui";
+import { LiquidMetal } from "@/components/LiquidMetal";
 
-export default function QueuePage() {
-  const [items, setItems] = useState<QueueItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<QueueFilters>({});
-
-  // Clearing on the interaction rather than in the effect keeps the skeleton
-  // appearing the moment a filter is pressed, with no intermediate stale frame.
-  const updateFilters = (next: (f: QueueFilters) => QueueFilters) => {
-    setItems(null);
-    setError(null);
-    setFilters(next);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // State transitions live inside the async flow rather than running
-    // synchronously in the effect body, so a filter change cannot tear the
-    // render between clearing the list and the fetch resolving.
-    const load = async () => {
-      try {
-        const r = await getQueue(filters);
-        if (!cancelled) setItems(r.items);
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [filters]);
-
-  const emergentCount = items?.filter((i) => i.is_emergent).length ?? 0;
-
+export default function LandingPage() {
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="font-display text-5xl font-black tracking-tight md:text-6xl">
-          REVIEW QUEUE
-        </h1>
-        <p className="mt-3 max-w-2xl font-editorial text-lg text-on-surface-variant">
-          Ranked by priority, not arrival. Every item is a recommendation for a
-          human decision — nothing here has been actioned automatically.
+    <>
+      <LiquidMetal intensity="full" />
+
+      <div className="relative flex min-h-[100svh] flex-col items-center justify-center px-6 text-center">
+        <p className="label-tech on-liquid animate-rise mb-8 opacity-80">
+          Multimodal content moderation
         </p>
-      </header>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Toggle
-          active={!!filters.emergent_only}
-          onClick={() =>
-            updateFilters((f) => ({ ...f, emergent_only: !f.emergent_only }))
-          }
+        <h1
+          className="display-vanguard blend-invert animate-rise text-[clamp(3.5rem,15vw,13rem)]"
+          style={{ animationDelay: "80ms" }}
         >
-          Emergent only{emergentCount ? ` (${emergentCount})` : ""}
-        </Toggle>
-        <Toggle
-          active={filters.head === "toxicity"}
-          onClick={() =>
-            updateFilters((f) => ({
-              ...f,
-              head: f.head === "toxicity" ? undefined : "toxicity",
-            }))
-          }
+          Vanguard
+        </h1>
+
+        <p
+          className="subtitle-athelas on-liquid animate-rise mt-8 max-w-3xl text-[clamp(1.15rem,2.6vw,2rem)] leading-snug"
+          style={{ animationDelay: "200ms" }}
         >
-          Harassment
-        </Toggle>
-        <Toggle
-          active={filters.head === "misinformation"}
-          onClick={() =>
-            updateFilters((f) => ({
-              ...f,
-              head: f.head === "misinformation" ? undefined : "misinformation",
-            }))
-          }
+          Absolute clarity in the face of complex data.
+        </p>
+
+        <p
+          className="on-liquid animate-rise mt-6 max-w-xl text-sm leading-relaxed opacity-85"
+          style={{ animationDelay: "300ms" }}
         >
-          Misinformation
-        </Toggle>
-      </div>
+          Harm is often a property of the relationship between an image and its
+          caption, not of either one alone. Vanguard surfaces those cases and
+          explains them — then a person decides.
+        </p>
 
-      {error && (
-        <GlassPanel title="Could not load queue">
-          <p className="text-sm text-on-surface-variant">{error}</p>
-        </GlassPanel>
-      )}
-
-      {items === null && !error && (
-        <div className="space-y-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
-      )}
-
-      {items?.length === 0 && (
-        <GlassPanel title="Queue empty">
-          <p className="text-sm text-on-surface-variant">
-            No items match the current filters.
-          </p>
-        </GlassPanel>
-      )}
-
-      <ul className="space-y-4">
-        {items?.map((item, i) => (
-          <li
-            key={item.item_id}
-            className="animate-rise"
-            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+        <Link
+          href="/queue"
+          className="animate-rise group mt-14 inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 text-black shadow-[0_8px_40px_rgba(0,0,0,0.5)] transition-transform duration-300 hover:scale-[1.03] active:scale-100"
+          style={{ animationDelay: "420ms" }}
+        >
+          <span className="label-tech-lg">Start review</span>
+          <span
+            aria-hidden
+            className="transition-transform duration-300 group-hover:translate-x-1"
           >
-            <QueueRow item={item} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function QueueRow({ item }: { item: QueueItem }) {
-  return (
-    <Link
-      href={`/items/${item.item_id}`}
-      className="glass glass-hover block rounded-lg p-5"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="numeric font-display text-sm font-bold text-outline">
-            {item.item_id.replace("itm_", "").toUpperCase()}
+            →
           </span>
-          <VerdictBadge label={item.verdict.label} />
-          {item.is_emergent && <EmergentBadge />}
-        </div>
-        <span className="label-tech text-outline">
-          {relativeAge(item.age_seconds)}
-        </span>
-      </div>
+        </Link>
 
-      <p className="mt-4 line-clamp-2 text-on-surface">{item.text_preview}</p>
-
-      <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-        <ConfidenceBar value={item.verdict.confidence} />
-        <div className="text-right">
-          <span className="label-tech text-outline">Priority</span>
-          <p className="numeric font-display text-2xl font-extrabold">
-            {item.verdict.priority_score.toFixed(2)}
-          </p>
+        <div
+          className="animate-rise absolute bottom-10 flex flex-col items-center gap-3"
+          style={{ animationDelay: "560ms" }}
+        >
+          <span className="h-10 w-px bg-white/40" aria-hidden />
+          <span className="label-tech on-liquid opacity-70">
+            Decision support · not automated removal
+          </span>
         </div>
       </div>
-    </Link>
-  );
-}
-
-function Toggle({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className={`label-tech rounded border px-3 py-2 transition-colors ${
-        active
-          ? "border-on-surface bg-on-surface text-black"
-          : "border-outline-variant text-outline hover:border-outline hover:text-on-surface"
-      }`}
-    >
-      {children}
-    </button>
+    </>
   );
 }
