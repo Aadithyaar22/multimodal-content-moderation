@@ -45,6 +45,11 @@ export function LiquidMetal({
           than as fog. Kept thin and moving at a different rate to the body. */}
       <div className={ambient ? "liquid-sheen opacity-30" : "liquid-sheen"} />
 
+      {/* Vignette last, so it darkens everything above it and holds the frame
+          edges at true black. Without it the veins bleed to the corners and the
+          field reads flat rather than deep. */}
+      <div className="liquid-depth" />
+
       {/* Fine grain breaks up the gradient banding that large soft blurs
           produce on 8-bit displays. */}
       <div className="liquid-grain" />
