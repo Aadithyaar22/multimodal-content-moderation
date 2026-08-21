@@ -77,9 +77,15 @@ class RunResult:
     train_seconds: float
     val: dict = field(default_factory=dict)
     test: dict = field(default_factory=dict)
+    #: Weights from the best-validation epoch. Held in memory for callers that
+    #: need to re-run the trained model (per-row logits for the fusion-delta
+    #: analysis), and excluded from to_dict since tensors are not JSON.
+    best_state: dict | None = field(default=None, repr=False, compare=False)
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d.pop("best_state", None)
+        return d
 
 
 def set_seed(seed: int) -> None:
@@ -274,6 +280,7 @@ def train(cfg: TrainConfig, save_dir: Path | None = None) -> RunResult:
         train_seconds=elapsed,
         val={k: v.to_dict() for k, v in evaluate(model, data["val"], token_mode).items()},
         test={k: v.to_dict() for k, v in evaluate(model, data["test"], token_mode).items()},
+        best_state=best_state,
     )
 
     log.info("  done in %.1fs | best val %.4f @ epoch %d", elapsed, best_score, best_epoch)

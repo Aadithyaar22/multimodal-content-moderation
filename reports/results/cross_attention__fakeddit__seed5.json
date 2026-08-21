@@ -1,0 +1,149 @@
+{
+  "config": {
+    "arch": "cross_attention",
+    "datasets": [
+      "fakeddit"
+    ],
+    "epochs": 30,
+    "batch_size": 128,
+    "lr": 0.0003,
+    "weight_decay": 0.05,
+    "hidden_dim": 256,
+    "dropout": 0.3,
+    "seed": 5,
+    "patience": 8,
+    "normalize_input": true,
+    "task_weights": [
+      1.0,
+      1.0
+    ],
+    "use_class_weights": true,
+    "n_layers": 2,
+    "n_heads": 8,
+    "fusion_dropout": 0.3,
+    "d_model": 512,
+    "warmup_epochs": 3,
+    "grad_clip": 1.0
+  },
+  "best_epoch": 7,
+  "best_val_score": 0.7624849815925222,
+  "train_seconds": 406.81391525268555,
+  "val": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 2376,
+      "accuracy": 0.8106060606060606,
+      "macro_f1": 0.7624849815925222,
+      "weighted_f1": 0.8044707231285761,
+      "auc": 0.9111822352605476,
+      "per_class": {
+        "true": {
+          "precision": 0.7415730337078652,
+          "recall": 0.5617021276595745,
+          "f1": 0.639225181598063,
+          "support": 470
+        },
+        "satire": {
+          "precision": 0.8207547169811321,
+          "recall": 0.7483870967741936,
+          "f1": 0.7829021372328459,
+          "support": 465
+        },
+        "misleading": {
+          "precision": 0.8233082706766918,
+          "recall": 0.9118667591950035,
+          "f1": 0.8653276259466579,
+          "support": 1441
+        }
+      },
+      "confusion": [
+        [
+          264,
+          24,
+          182
+        ],
+        [
+          17,
+          348,
+          100
+        ],
+        [
+          75,
+          52,
+          1314
+        ]
+      ],
+      "ece": 0.1442462031538238
+    }
+  },
+  "test": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 1422,
+      "accuracy": 0.8150492264416315,
+      "macro_f1": 0.7597087082422119,
+      "weighted_f1": 0.8072945130119139,
+      "auc": 0.922840522694794,
+      "per_class": {
+        "true": {
+          "precision": 0.725,
+          "recall": 0.5215827338129496,
+          "f1": 0.606694560669456,
+          "support": 278
+        },
+        "satire": {
+          "precision": 0.8206106870229007,
+          "recall": 0.776173285198556,
+          "f1": 0.7977736549165121,
+          "support": 277
+        },
+        "misleading": {
+          "precision": 0.8322916666666667,
+          "recall": 0.9215686274509803,
+          "f1": 0.8746579091406678,
+          "support": 867
+        }
+      },
+      "confusion": [
+        [
+          145,
+          22,
+          111
+        ],
+        [
+          12,
+          215,
+          50
+        ],
+        [
+          43,
+          25,
+          799
+        ]
+      ],
+      "ece": 0.13753917276775446
+    }
+  }
+}

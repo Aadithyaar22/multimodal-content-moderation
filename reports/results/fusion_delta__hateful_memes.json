@@ -1,0 +1,16 @@
+{
+  "late_fusion": {
+    "n_hard_cases": 109,
+    "n_positives": 490,
+    "hard_fraction_of_positives": 0.22244897959183674,
+    "fusion_recall_on_hard": 0.29357798165137616,
+    "recall_delta": 0.29357798165137616
+  },
+  "cross_attention": {
+    "n_hard_cases": 109,
+    "n_positives": 490,
+    "hard_fraction_of_positives": 0.22244897959183674,
+    "fusion_recall_on_hard": 0.24770642201834864,
+    "recall_delta": 0.24770642201834864
+  }
+}
