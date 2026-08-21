@@ -28,6 +28,16 @@ export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Results minted by a mock analyze() run, keyed by their generated id.
+ *
+ * Without this, a submission gets a fresh item_id that is absent from the
+ * fixtures, so the follow-up explanation and detail lookups miss and the demo
+ * surface reports "no narrative available" for every item a viewer submits —
+ * precisely the screen where the reasoning most needs to appear.
+ */
+const mockLiveItems = new Map<string, ItemDetail>();
+
 class ApiClientError extends Error {
   constructor(
     message: string,
@@ -104,7 +114,7 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueRespons
 export async function getItem(itemId: string): Promise<ItemDetail> {
   if (USE_MOCK) {
     await delay(220);
-    const item = MOCK_DETAILS[itemId];
+    const item = MOCK_DETAILS[itemId] ?? mockLiveItems.get(itemId);
     if (!item) throw new ApiClientError("item not found", 404);
     return item;
   }
@@ -117,7 +127,7 @@ export async function getExplanation(itemId: string): Promise<Explanation> {
     // rather than only discovered against the real LLM.
     await delay(1800);
     return (
-      MOCK_DETAILS[itemId]?.explanation ?? {
+      (MOCK_DETAILS[itemId] ?? mockLiveItems.get(itemId))?.explanation ?? {
         item_id: itemId,
         status: "unavailable",
         narrative: null,
@@ -135,7 +145,7 @@ export async function getAttributions(itemId: string): Promise<Attributions> {
   if (USE_MOCK) {
     await delay(400);
     return (
-      MOCK_DETAILS[itemId]?.attributions ?? {
+      (MOCK_DETAILS[itemId] ?? mockLiveItems.get(itemId))?.attributions ?? {
         item_id: itemId,
         text: null,
         image: null,
@@ -177,13 +187,21 @@ export async function analyze(form: FormData): Promise<ItemDetail> {
   if (USE_MOCK) {
     await delay(900);
     const text = String(form.get("text") ?? "");
+    const hasImage = form.get("image") instanceof File;
     const base = MOCK_DETAILS["itm_harassment_01"];
-    return {
+    const item: ItemDetail = {
       ...base,
       item_id: `itm_live_${Date.now().toString(36)}`,
       created_at: new Date().toISOString(),
-      input: { ...base.input, text: text || base.input.text },
+      input: {
+        ...base.input,
+        text: text || base.input.text,
+        has_image: hasImage,
+        modalities: hasImage ? ["image", "text"] : ["text"],
+      },
     };
+    mockLiveItems.set(item.item_id, item);
+    return item;
   }
   return request<ItemDetail>("/analyze", { method: "POST", body: form });
 }
