@@ -32,3 +32,9 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local

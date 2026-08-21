@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel AI - Vanguard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#2f3131",
+                      "on-primary-container": "#636565",
+                      "on-primary": "#2f3131",
+                      "surface-container-lowest": "#0e0e0e",
+                      "surface-container-high": "#2a2a2a",
+                      "on-secondary-container": "#b6b9ba",
+                      "tertiary-container": "#e2e2e2",
+                      "surface-variant": "#353434",
+                      "tertiary-fixed": "#e2e2e2",
+                      "surface-container-highest": "#353434",
+                      "secondary-container": "#464a4b",
+                      "secondary-fixed-dim": "#c4c7c8",
+                      "secondary-fixed": "#e0e3e4",
+                      "surface-bright": "#3a3939",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed-variant": "#454747",
+                      "secondary": "#c4c7c8",
+                      "on-error-container": "#ffdad6",
+                      "surface-dim": "#141313",
+                      "glass-border": "rgba(255, 255, 255, 0.12)",
+                      "background": "#141313",
+                      "on-tertiary-fixed-variant": "#454747",
+                      "error-container": "#93000a",
+                      "surface": "#141313",
+                      "inverse-primary": "#5d5f5f",
+                      "on-background": "#e5e2e1",
+                      "primary-fixed": "#e2e2e2",
+                      "tertiary": "#ffffff",
+                      "pure-black": "#000000",
+                      "primary-fixed-dim": "#c6c6c7",
+                      "primary": "#ffffff",
+                      "on-surface": "#e5e2e1",
+                      "surface-tint": "#c6c6c7",
+                      "on-secondary-fixed": "#191c1d",
+                      "tertiary-fixed-dim": "#c6c6c7",
+                      "anomaly-highlight": "#ffffff",
+                      "primary-container": "#e2e2e2",
+                      "on-error": "#690005",
+                      "on-secondary-fixed-variant": "#444748",
+                      "surface-gradient-end": "rgba(255, 255, 255, 0.01)",
+                      "surface-container-low": "#1c1b1b",
+                      "surface-container": "#201f1f",
+                      "inverse-surface": "#e5e2e1",
+                      "outline-variant": "#444748",
+                      "inverse-on-surface": "#313030",
+                      "on-surface-variant": "#c4c7c8",
+                      "deep-grey": "#121212",
+                      "on-tertiary-fixed": "#1a1c1c",
+                      "outline": "#8e9192",
+                      "on-primary-fixed": "#1a1c1c",
+                      "surface-gradient-start": "rgba(255, 255, 255, 0.05)",
+                      "on-tertiary-container": "#636565",
+                      "on-secondary": "#2d3132",
+                      "negative-adjustment": "#444748"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-lg": "48px",
+                      "stack-xl": "80px",
+                      "margin": "3rem",
+                      "gutter": "2rem",
+                      "stack-sm": "12px",
+                      "stack-xs": "4px",
+                      "stack-md": "24px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "display-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "display-md": [
+                              "Anybody"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Anybody"
+                      ],
+                      "display-lg": [
+                              "Anybody"
+                      ],
+                      "headline-lg": [
+                              "Noto Serif"
+                      ],
+                      "headline-md": [
+                              "Noto Serif"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Anybody"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg-mobile": [
+                              "48px",
+                              {
+                                      "lineHeight": "44px",
+                                      "fontWeight": "900"
+                              }
+                      ],
+                      "display-md": [
+                              "48px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.08em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "120px",
+                              {
+                                      "lineHeight": "110px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "900"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<style>
+        #shader-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        .shader-mix {
+            display: none;
+        }
+        
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: skewX(-12deg) translateX(200%);
+            }
+        }
+    </style>
+</head>
+<body class="bg-pure-black text-on-surface min-h-screen flex flex-col font-body-md overflow-hidden antialiased selection:bg-primary selection:text-on-primary">
+<div id="shader-container"></div>
+<!-- Main Content Area -->
+<main class="flex-grow flex flex-col items-center justify-center relative z-10 px-margin h-screen">
+<div class="max-w-container-max w-full mx-auto flex flex-col items-center text-center mix-blend-difference text-white">
+<!-- Super Headline -->
+<h1 class="font-display-lg text-[160px] leading-[140px] italic text-white uppercase mb-stack-md tracking-tighter opacity-100 drop-shadow-2xl font-black">
+                Vanguard
+            </h1>
+<!-- Tagline (Serif) -->
+<p class="font-headline-lg text-headline-lg text-white/90 max-w-3xl mx-auto mb-stack-xl italic tracking-wide">
+                Absolute clarity in the face of complex data.
+            </p>
+<!-- Call to Action -->
+<button class="group relative overflow-hidden bg-white text-black rounded-full px-12 py-4 font-label-lg text-label-lg uppercase tracking-widest transition-transform duration-300 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black mt-4">
+<span class="relative z-10 flex items-center gap-2 font-bold">
+                    Start Review
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</span>
+<div class="absolute inset-0 bg-black/10 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+</button>
+</div>
+<!-- Footer / Subtle Information -->
+<div class="absolute bottom-margin w-full text-center flex flex-col items-center gap-stack-sm opacity-60 mix-blend-difference text-white">
+<p class="font-label-md text-label-md uppercase tracking-widest">
+                Sentinel AI Forensics
+            </p>
+<div class="w-12 h-px bg-white/40"></div>
+</div>
+</main>
+<script>
+    // WebGL Shader Background setup
+    const container = document.getElementById('shader-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+    `;
+
+    const fragmentShader = `
+        uniform float uTime;
+        uniform vec2 uResolution;
+        varying vec2 vUv;
+
+        // Noise functions (Simplex noise simplified)
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+        float snoise(vec2 v) {
+            const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
+                                0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
+                               -0.577350269189626,  // -1.0 + 2.0 * C.x
+                                0.024390243902439); // 1.0 / 41.0
+            vec2 i  = floor(v + dot(v, C.yy) );
+            vec2 x0 = v -   i + dot(i, C.xx);
+            vec2 i1;
+            i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            i = mod289(i); // Avoid truncation effects in permutation
+            vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+                + i.x + vec3(0.0, i1.x, 1.0 ));
+            vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+            m = m*m ;
+            m = m*m ;
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+            vec3 g;
+            g.x  = a0.x  * x0.x  + h.x  * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
+        }
+
+        void main() {
+            vec2 st = gl_FragCoord.xy/uResolution.xy;
+            st.y = 1.0 - st.y; // Flip Y to match CSS orientation (black top, white bottom)
+
+            // Base gradient
+            float baseMix = smoothstep(0.2, 0.8, st.y);
+            
+            // Add smoke/plumes in the middle
+            float n = snoise(vec2(st.x * 2.0 + uTime * 0.1, st.y * 3.0 - uTime * 0.05));
+            float n2 = snoise(vec2(st.x * 1.5 - uTime * 0.07, st.y * 2.0 + uTime * 0.03));
+            
+            // Mix noise into the boundary
+            float boundaryMix = smoothstep(0.4, 0.6, st.y + n * 0.15 + n2 * 0.1);
+            
+            // Create the smoky plume effect in the center
+            float centerMask = 1.0 - abs(st.y - 0.5) * 2.0; // 1 at center, 0 at edges
+            centerMask = smoothstep(0.0, 0.8, centerMask);
+            
+            float smoke = (n * 0.5 + 0.5) * (n2 * 0.5 + 0.5) * centerMask;
+
+            // Combine gradient and smoke
+            vec3 colorTop = vec3(0.0, 0.0, 0.0);
+            vec3 colorBottom = vec3(1.0, 1.0, 1.0);
+            vec3 smokeColor = vec3(0.8, 0.8, 0.8); // Light grey smoke
+
+            vec3 finalColor = mix(colorTop, colorBottom, boundaryMix);
+            
+            // Blend smoke into the transition area
+            finalColor = mix(finalColor, mix(finalColor, smokeColor, smoke * 0.8), centerMask);
+
+            gl_FragColor = vec4(finalColor, 1.0);
+        }
+    `;
+
+    const uniforms = {
+        uTime: { value: 0 },
+        uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+    };
+
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms,
+        depthWrite: false,
+        depthTest: false
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        uniforms.uTime.value = time * 0.001;
+        renderer.render(scene, camera);
+    }
+
+    animate(0);
+
+    window.addEventListener('resize', () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body></html>

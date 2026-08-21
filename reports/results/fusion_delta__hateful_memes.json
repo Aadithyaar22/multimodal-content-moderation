@@ -1,16 +1,101 @@
 {
-  "late_fusion": {
-    "n_hard_cases": 109,
-    "n_positives": 490,
-    "hard_fraction_of_positives": 0.22244897959183674,
-    "fusion_recall_on_hard": 0.29357798165137616,
-    "recall_delta": 0.29357798165137616
-  },
-  "cross_attention": {
-    "n_hard_cases": 109,
-    "n_positives": 490,
-    "hard_fraction_of_positives": 0.22244897959183674,
-    "fusion_recall_on_hard": 0.24770642201834864,
-    "recall_delta": 0.24770642201834864
+  "threshold": 0.5,
+  "per_seed": [
+    {
+      "late_fusion": {
+        "n_hard_cases": 109,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22244897959183674,
+        "fusion_recall_on_hard": 0.29357798165137616,
+        "recall_delta": 0.29357798165137616
+      },
+      "cross_attention": {
+        "n_hard_cases": 109,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22244897959183674,
+        "fusion_recall_on_hard": 0.24770642201834864,
+        "recall_delta": 0.24770642201834864
+      }
+    },
+    {
+      "late_fusion": {
+        "n_hard_cases": 111,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22653061224489796,
+        "fusion_recall_on_hard": 0.21621621621621623,
+        "recall_delta": 0.21621621621621623
+      },
+      "cross_attention": {
+        "n_hard_cases": 111,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22653061224489796,
+        "fusion_recall_on_hard": 0.2882882882882883,
+        "recall_delta": 0.2882882882882883
+      }
+    },
+    {
+      "late_fusion": {
+        "n_hard_cases": 106,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.2163265306122449,
+        "fusion_recall_on_hard": 0.32075471698113206,
+        "recall_delta": 0.32075471698113206
+      },
+      "cross_attention": {
+        "n_hard_cases": 106,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.2163265306122449,
+        "fusion_recall_on_hard": 0.3490566037735849,
+        "recall_delta": 0.3490566037735849
+      }
+    },
+    {
+      "late_fusion": {
+        "n_hard_cases": 109,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22244897959183674,
+        "fusion_recall_on_hard": 0.22935779816513763,
+        "recall_delta": 0.22935779816513763
+      },
+      "cross_attention": {
+        "n_hard_cases": 109,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.22244897959183674,
+        "fusion_recall_on_hard": 0.3211009174311927,
+        "recall_delta": 0.3211009174311927
+      }
+    },
+    {
+      "late_fusion": {
+        "n_hard_cases": 121,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.24693877551020407,
+        "fusion_recall_on_hard": 0.3140495867768595,
+        "recall_delta": 0.3140495867768595
+      },
+      "cross_attention": {
+        "n_hard_cases": 121,
+        "n_positives": 490,
+        "hard_fraction_of_positives": 0.24693877551020407,
+        "fusion_recall_on_hard": 0.33884297520661155,
+        "recall_delta": 0.33884297520661155
+      }
+    }
+  ],
+  "recalls": {
+    "late_fusion": [
+      0.29357798165137616,
+      0.21621621621621623,
+      0.32075471698113206,
+      0.22935779816513763,
+      0.3140495867768595
+    ],
+    "cross_attention": [
+      0.24770642201834864,
+      0.2882882882882883,
+      0.3490566037735849,
+      0.3211009174311927,
+      0.33884297520661155
+    ]
   }
 }

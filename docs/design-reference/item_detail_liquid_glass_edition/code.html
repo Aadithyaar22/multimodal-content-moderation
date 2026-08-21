@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel AI - Item Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-surface": "#e5e2e1",
+                "primary-fixed": "#e2e2e2",
+                "surface-container-lowest": "#0e0e0e",
+                "secondary": "#c4c7c8",
+                "tertiary-container": "#e2e2e2",
+                "on-primary": "#2f3131",
+                "tertiary-fixed-dim": "#c6c6c7",
+                "on-error-container": "#ffdad6",
+                "negative-adjustment": "#444748",
+                "on-background": "#e5e2e1",
+                "inverse-primary": "#5d5f5f",
+                "pure-black": "#000000",
+                "error": "#ffb4ab",
+                "on-surface-variant": "#c4c7c8",
+                "on-tertiary": "#2f3131",
+                "surface-gradient-start": "rgba(255, 255, 255, 0.05)",
+                "surface-tint": "#c6c6c7",
+                "deep-grey": "#121212",
+                "secondary-container": "#464a4b",
+                "on-tertiary-fixed": "#1a1c1c",
+                "on-tertiary-container": "#636565",
+                "surface-gradient-end": "rgba(255, 255, 255, 0.01)",
+                "primary-container": "#e2e2e2",
+                "inverse-on-surface": "#313030",
+                "inverse-surface": "#e5e2e1",
+                "tertiary-fixed": "#e2e2e2",
+                "glass-border": "rgba(255, 255, 255, 0.12)",
+                "surface-container-highest": "#353434",
+                "on-secondary": "#2d3132",
+                "tertiary": "#ffffff",
+                "surface-variant": "#353434",
+                "on-error": "#690005",
+                "surface-container": "#201f1f",
+                "on-secondary-container": "#b6b9ba",
+                "surface-container-low": "#1c1b1b",
+                "surface-dim": "#141313",
+                "surface": "#141313",
+                "on-secondary-fixed": "#191c1d",
+                "on-primary-container": "#636565",
+                "primary-fixed-dim": "#c6c6c7",
+                "secondary-fixed-dim": "#c4c7c8",
+                "on-secondary-fixed-variant": "#444748",
+                "anomaly-highlight": "#ffffff",
+                "surface-container-high": "#2a2a2a",
+                "background": "#141313",
+                "primary": "#ffffff",
+                "surface-bright": "#3a3939",
+                "error-container": "#93000a",
+                "outline-variant": "#444748",
+                "on-tertiary-fixed-variant": "#454747",
+                "secondary-fixed": "#e0e3e4",
+                "outline": "#8e9192",
+                "on-primary-fixed-variant": "#454747",
+                "on-primary-fixed": "#1a1c1c"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem",
+                "3xl": "1.5rem",
+                "4xl": "2rem"
+        },
+        "spacing": {
+                "margin": "3rem",
+                "stack-sm": "12px",
+                "stack-xl": "80px",
+                "container-max": "1440px",
+                "stack-md": "24px",
+                "gutter": "2rem",
+                "stack-xs": "4px",
+                "stack-lg": "48px"
+        },
+        "fontFamily": {
+                "label-md": [
+                        "Anybody"
+                ],
+                "label-lg": [
+                        "Anybody"
+                ],
+                "display-lg-mobile": [
+                        "Anybody"
+                ],
+                "display-md": [
+                        "Anybody"
+                ],
+                "headline-lg": [
+                        "Noto Serif"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Anybody"
+                ],
+                "headline-md": [
+                        "Noto Serif"
+                ]
+        },
+        "fontSize": {
+                "label-md": [
+                        "11px",
+                        {
+                                "lineHeight": "14px",
+                                "letterSpacing": "0.1em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.08em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-lg-mobile": [
+                        "48px",
+                        {
+                                "lineHeight": "44px",
+                                "fontWeight": "900"
+                        }
+                ],
+                "display-md": [
+                        "48px",
+                        {
+                                "lineHeight": "48px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "84px",
+                        {
+                                "lineHeight": "80px",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "900"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        /* Silky Liquid Glass Background with Clouds */
+        .liquid-glass-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: linear-gradient(135deg, #000000 0%, #121212 50%, #0a0a0a 100%);
+            overflow: hidden;
+        }
+        
+        .liquid-glass-bg::before,
+        .liquid-glass-bg::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 40%),
+                        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%);
+            animation: silkDrift 40s ease-in-out infinite alternate;
+            filter: blur(40px);
+            opacity: 0.8;
+            mix-blend-mode: screen;
+        }
+
+        .liquid-glass-bg::after {
+            background: radial-gradient(ellipse at 30% 70%, rgba(255,255,255,0.05) 0%, transparent 60%);
+            animation: silkDriftReverse 45s ease-in-out infinite alternate;
+            filter: blur(60px);
+            opacity: 0.6;
+        }
+
+        /* Clouds overlay */
+        .clouds {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.005" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.05"/></svg>');
+            animation: cloudDrift 60s linear infinite;
+            mix-blend-mode: overlay;
+        }
+        
+        @keyframes silkDrift {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(-5%, 5%) rotate(5deg) scale(1.1); }
+            100% { transform: translate(5%, -5%) rotate(-5deg) scale(1); }
+        }
+
+        @keyframes silkDriftReverse {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(5%, -5%) rotate(-5deg) scale(1.1); }
+            100% { transform: translate(-5%, 5%) rotate(5deg) scale(1); }
+        }
+
+        @keyframes cloudDrift {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* Refined Glassmorphism */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        
+        .shap-positive {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-left: 2px solid #ffffff;
+        }
+        .shap-negative {
+            background-color: rgba(0, 0, 0, 0.4);
+            border-left: 2px solid #444748;
+        }
+
+        /* Dynamic Island fix */
+        .dynamic-island {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-pure-black text-on-surface min-h-screen font-body-md overflow-x-hidden relative antialiased selection:bg-primary selection:text-pure-black">
+<!-- Liquid Glass Background -->
+<div class="liquid-glass-bg pointer-events-none">
+<div class="clouds"></div>
+</div>
+<!-- Top Navigation Bar (Dynamic Island style) -->
+<nav class="dynamic-island flex items-center justify-between px-8 py-4 gap-12 bg-surface-container/60 dark:bg-surface-container/60 rounded-full w-fit max-w-[90%] backdrop-blur-3xl border border-glass-border shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+<div class="font-display-md text-[32px] md:text-display-md font-black tracking-tighter text-primary dark:text-primary">
+            Sentinel AI
+        </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 px-4 py-2" href="#">
+                Queue
+            </a>
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-primary dark:text-primary border-b-2 border-primary pb-1 scale-95 duration-200 ease-out px-4 py-2 hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 bg-surface-container-highest/30" href="#">
+                Analyze
+            </a>
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 px-4 py-2" href="#">
+                Dashboard
+            </a>
+</div>
+<button class="font-label-lg text-label-lg uppercase tracking-widest bg-primary text-pure-black px-6 py-3 rounded-full hover:bg-surface-tint transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+            New Report
+        </button>
+</nav>
+<!-- Main Content Canvas -->
+<main class="relative z-10 w-full max-w-container-max mx-auto px-gutter pt-[160px] pb-32 flex flex-col items-center">
+<!-- Header -->
+<header class="text-center mb-stack-lg w-full max-w-3xl flex flex-col items-center gap-stack-sm">
+<h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-primary uppercase drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">Report #TRX-8924</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase mt-1">Generated: 2023-10-27 14:32 UTC</p>
+<div class="flex gap-4 mt-4">
+<button class="glass-panel px-6 py-2 rounded-full font-label-lg text-label-lg text-primary hover:bg-white hover:text-black transition-all">
+                    Export PDF
+                </button>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-stack-md w-full">
+<!-- Left Column: Evidence & Media -->
+<div class="lg:col-span-5 flex flex-col gap-stack-md">
+<!-- Primary Image Evidence -->
+<div class="glass-panel rounded-4xl overflow-hidden flex flex-col h-full">
+<div class="p-6 border-b border-glass-border/50 flex justify-between items-center">
+<h2 class="font-label-lg text-label-lg text-primary uppercase tracking-widest text-center w-full">Primary Evidence</h2>
+</div>
+<div class="relative flex-grow min-h-[400px] p-6">
+<img alt="Document Evidence" class="w-full h-full object-cover object-top opacity-90 filter contrast-125 grayscale hover:grayscale-0 transition-all duration-700 rounded-3xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF-uzD6lHyzhm5o1a40ETJqDAowbQElxFP4Yj2GQ7iHNB2g5mHhZN-5X5DnNicsPCOaqJsMZieHYOOTL3x7rw1tof8z6YGBXuRKxpW9LE8EEsAqKhMSqBXOfGEvjO_68lIv6afWbVXbuo7V_zmgkbcUpij5b_xQy2zKSX0UqFcAIkyP5zn2i-sRbSvvpVjtkZ2KBonPeVfsT0y1rnV5iguLigsBKkpHHi2leJ7tpnaFI5cM097xu4ca3G2nVcGMlcKdpI"/>
+<!-- Overlay bounding box -->
+<div class="absolute top-1/4 left-1/4 w-1/2 h-1/4 border-2 border-primary bg-primary/10 pointer-events-none rounded-xl">
+<span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-primary text-black font-label-md text-label-md px-3 py-1.5 rounded-full whitespace-nowrap">Anomaly Detected</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Analysis & Reasoning -->
+<div class="lg:col-span-7 flex flex-col gap-stack-md">
+<!-- Top Row: Scores -->
+<div class="grid grid-cols-2 gap-stack-md">
+<!-- Risk Score -->
+<div class="glass-panel rounded-4xl p-8 relative overflow-hidden group flex flex-col items-center justify-center text-center">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-4 tracking-widest">Risk Assessment</h3>
+<div class="flex items-baseline justify-center gap-1">
+<span class="font-display-md text-display-md text-primary">87</span>
+<span class="font-body-md text-body-md text-on-surface-variant pb-2">/ 100</span>
+</div>
+<div class="w-full max-w-[200px] h-1 bg-surface-container-highest mt-6 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[87%] rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+</div>
+</div>
+<!-- Confidence Score -->
+<div class="glass-panel rounded-4xl p-8 relative overflow-hidden group flex flex-col items-center justify-center text-center">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-4 tracking-widest">AI Confidence</h3>
+<div class="flex items-baseline justify-center gap-1">
+<span class="font-display-md text-display-md text-primary">94%</span>
+</div>
+<div class="w-full max-w-[200px] h-1 bg-surface-container-highest mt-6 rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant w-[94%] rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- AI Narrative / Reasoning -->
+<div class="glass-panel rounded-4xl p-8 flex-grow flex flex-col items-center">
+<div class="flex items-center gap-2 mb-stack-md pb-4 border-b border-glass-border/50 w-full justify-center">
+<h2 class="font-label-lg text-label-lg text-primary uppercase tracking-widest">Reasoning Narrative</h2>
+</div>
+<div class="prose prose-invert max-w-2xl text-center font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+<p class="mb-4">
+                            The automated analysis pipeline has flagged this document for severe structural inconsistencies. The primary area of concern is located in the upper quadrant, where pixel variance indicates digital manipulation consistent with localized clone-stamping techniques.
+                        </p>
+<p>
+                            Furthermore, metadata analysis reveals an anomalous signature diverging from standard device profiles expected for this submission type.
+                        </p>
+</div>
+<!-- SHAP Explanations (Feature Importance) -->
+<div class="mt-stack-lg w-full max-w-2xl">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase mb-4 tracking-widest text-center">Key Impact Factors (SHAP)</h3>
+<div class="flex flex-col gap-2">
+<!-- Positive Factor (Increases Risk) -->
+<div class="shap-positive p-4 rounded-3xl flex justify-between items-center">
+<span class="font-body-md text-body-md text-primary">Pixel Variance Density</span>
+<span class="font-label-md text-label-md text-primary">+34.2</span>
+</div>
+<!-- Positive Factor -->
+<div class="shap-positive p-4 rounded-3xl flex justify-between items-center opacity-80">
+<span class="font-body-md text-body-md text-primary">Metadata Anomaly</span>
+<span class="font-label-md text-label-md text-primary">+18.7</span>
+</div>
+<!-- Negative Factor (Decreases Risk) -->
+<div class="shap-negative p-4 rounded-3xl flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Account Tenure</span>
+<span class="font-label-md text-label-md text-on-surface-variant">-5.1</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Decision Bar -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-3xl glass-panel rounded-full p-2 z-50 shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-glass-border">
+<div class="flex items-center justify-between px-6">
+<div class="hidden md:block">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Decision Required</span>
+</div>
+<div class="flex gap-4 w-full md:w-auto justify-end">
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full font-label-lg text-label-lg text-on-surface hover:bg-surface-container-highest/50 transition-colors flex items-center justify-center gap-2">
+<span class="hidden md:inline uppercase tracking-widest">Escalate</span>
+</button>
+<button class="flex-1 md:flex-none px-6 py-3 rounded-full font-label-lg text-label-lg text-on-surface hover:bg-surface-container-highest/50 transition-colors flex items-center justify-center gap-2 border border-outline/30">
+<span class="hidden md:inline uppercase tracking-widest">Reject</span>
+</button>
+<button class="flex-1 md:flex-none bg-primary text-pure-black px-8 py-3 rounded-full font-label-lg text-label-lg hover:bg-surface-tint transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+<span class="uppercase tracking-widest">Approve</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel AI - Review Queue</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Use standard fonts as fallbacks for custom requested fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "on-surface": "#e5e2e1",
+                "primary-fixed": "#e2e2e2",
+                "surface-container-lowest": "#0e0e0e",
+                "secondary": "#c4c7c8",
+                "tertiary-container": "#e2e2e2",
+                "on-primary": "#2f3131",
+                "tertiary-fixed-dim": "#c6c6c7",
+                "on-error-container": "#ffdad6",
+                "negative-adjustment": "#444748",
+                "on-background": "#e5e2e1",
+                "inverse-primary": "#5d5f5f",
+                "pure-black": "#000000",
+                "error": "#ffb4ab",
+                "on-surface-variant": "#c4c7c8",
+                "on-tertiary": "#2f3131",
+                "surface-gradient-start": "rgba(255, 255, 255, 0.05)",
+                "surface-tint": "#c6c6c7",
+                "deep-grey": "#121212",
+                "secondary-container": "#464a4b",
+                "on-tertiary-fixed": "#1a1c1c",
+                "on-tertiary-container": "#636565",
+                "surface-gradient-end": "rgba(255, 255, 255, 0.01)",
+                "primary-container": "#e2e2e2",
+                "inverse-on-surface": "#313030",
+                "inverse-surface": "#e5e2e1",
+                "tertiary-fixed": "#e2e2e2",
+                "glass-border": "rgba(255, 255, 255, 0.12)",
+                "surface-container-highest": "#353434",
+                "on-secondary": "#2d3132",
+                "tertiary": "#ffffff",
+                "surface-variant": "#353434",
+                "on-error": "#690005",
+                "surface-container": "#201f1f",
+                "on-secondary-container": "#b6b9ba",
+                "surface-container-low": "#1c1b1b",
+                "surface-dim": "#141313",
+                "surface": "#141313",
+                "on-secondary-fixed": "#191c1d",
+                "on-primary-container": "#636565",
+                "primary-fixed-dim": "#c6c6c7",
+                "secondary-fixed-dim": "#c4c7c8",
+                "on-secondary-fixed-variant": "#444748",
+                "anomaly-highlight": "#ffffff",
+                "surface-container-high": "#2a2a2a",
+                "background": "#141313",
+                "primary": "#ffffff",
+                "surface-bright": "#3a3939",
+                "error-container": "#93000a",
+                "outline-variant": "#444748",
+                "on-tertiary-fixed-variant": "#454747",
+                "secondary-fixed": "#e0e3e4",
+                "outline": "#8e9192",
+                "on-primary-fixed-variant": "#454747",
+                "on-primary-fixed": "#1a1c1c"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem",
+                "2xl": "1rem",
+                "3xl": "1.5rem",
+                "4xl": "2rem"
+        },
+        "spacing": {
+                "margin": "3rem",
+                "stack-sm": "12px",
+                "stack-xl": "80px",
+                "container-max": "1440px",
+                "stack-md": "24px",
+                "gutter": "2rem",
+                "stack-xs": "4px",
+                "stack-lg": "48px"
+        },
+        "fontFamily": {
+                "label-md": [
+                        "Anybody"
+                ],
+                "label-lg": [
+                        "Anybody"
+                ],
+                "display-lg-mobile": [
+                        "Anybody"
+                ],
+                "display-md": [
+                        "Anybody"
+                ],
+                "headline-lg": [
+                        "Noto Serif"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Anybody"
+                ],
+                "headline-md": [
+                        "Noto Serif"
+                ]
+        },
+        "fontSize": {
+                "label-md": [
+                        "11px",
+                        {
+                                "lineHeight": "14px",
+                                "letterSpacing": "0.1em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "label-lg": [
+                        "14px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.08em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "display-lg-mobile": [
+                        "48px",
+                        {
+                                "lineHeight": "44px",
+                                "fontWeight": "900"
+                        }
+                ],
+                "display-md": [
+                        "48px",
+                        {
+                                "lineHeight": "48px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "800"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "display-lg": [
+                        "84px",
+                        {
+                                "lineHeight": "80px",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "900"
+                        }
+                ],
+                "headline-md": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Silky Liquid Glass Background with Clouds */
+        .liquid-glass-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: linear-gradient(135deg, #000000 0%, #121212 50%, #0a0a0a 100%);
+            overflow: hidden;
+        }
+        
+        .liquid-glass-bg::before,
+        .liquid-glass-bg::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 40%),
+                        radial-gradient(circle at 20% 80%, rgba(255,255,255,0.04) 0%, transparent 40%);
+            animation: silkDrift 40s ease-in-out infinite alternate;
+            filter: blur(40px);
+            opacity: 0.8;
+            mix-blend-mode: screen;
+        }
+
+        .liquid-glass-bg::after {
+            background: radial-gradient(ellipse at 30% 70%, rgba(255,255,255,0.05) 0%, transparent 60%);
+            animation: silkDriftReverse 45s ease-in-out infinite alternate;
+            filter: blur(60px);
+            opacity: 0.6;
+        }
+
+        /* Clouds overlay */
+        .clouds {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.005" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.05"/></svg>');
+            animation: cloudDrift 60s linear infinite;
+            mix-blend-mode: overlay;
+        }
+        
+        @keyframes silkDrift {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(-5%, 5%) rotate(5deg) scale(1.1); }
+            100% { transform: translate(5%, -5%) rotate(-5deg) scale(1); }
+        }
+
+        @keyframes silkDriftReverse {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            50% { transform: translate(5%, -5%) rotate(-5deg) scale(1.1); }
+            100% { transform: translate(-5%, 5%) rotate(5deg) scale(1); }
+        }
+
+        @keyframes cloudDrift {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* Refined Glassmorphism */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .premium-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .premium-hover:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        
+        .dynamic-island {
+            position: fixed;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-pure-black text-on-surface min-h-screen antialiased selection:bg-primary selection:text-pure-black overflow-x-hidden">
+<!-- Liquid Glass Background -->
+<div class="liquid-glass-bg pointer-events-none">
+<div class="clouds"></div>
+</div>
+<!-- TopNavBar (Dynamic Island) -->
+<nav class="dynamic-island flex items-center justify-between px-8 py-4 gap-12 bg-surface-container/60 dark:bg-surface-container/60 rounded-full w-fit max-w-[90%] backdrop-blur-3xl border border-glass-border shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+<div class="font-display-md text-[32px] md:text-display-md font-black tracking-tighter text-primary dark:text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">security</span>
+            Sentinel AI
+        </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-primary dark:text-primary border-b-2 border-primary pb-1 scale-95 duration-200 ease-out px-4 py-2 hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 bg-surface-container-highest/30" href="#">
+                Queue
+            </a>
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 px-4 py-2" href="#">
+                Analyze
+            </a>
+<a class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors hover:bg-surface-container-highest/50 dark:hover:bg-surface-container-highest/50 rounded-full transition-all duration-300 px-4 py-2" href="#">
+                Dashboard
+            </a>
+</div>
+<button class="font-label-lg text-label-lg uppercase tracking-widest bg-primary text-pure-black px-6 py-3 rounded-full hover:bg-surface-tint transition-all duration-300 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] flex items-center gap-2 premium-hover">
+<span class="material-symbols-outlined text-sm">add</span>
+            New Report
+        </button>
+</nav>
+<!-- Main Content Canvas -->
+<main class="relative z-10 max-w-container-max mx-auto px-margin pt-[160px] pb-margin">
+<!-- Header Section -->
+<header class="mb-stack-lg flex flex-col items-center w-full">
+<div class="text-center flex flex-col items-center">
+<h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-primary mb-stack-xs uppercase drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">Review Queue</h1>
+<p class="font-headline-md text-headline-md text-secondary italic max-w-2xl">High-density triage of flagged entities. Prioritize by anomaly score and risk factor.</p>
+</div>
+<div class="flex gap-4 mt-6">
+<button class="glass-panel px-4 py-2 rounded-full flex items-center gap-2 font-label-md text-label-md uppercase tracking-widest premium-hover">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                    Filter
+                </button>
+<button class="glass-panel px-4 py-2 rounded-full flex items-center gap-2 font-label-md text-label-md uppercase tracking-widest premium-hover">
+<span class="material-symbols-outlined text-[18px]">sort</span>
+                    Sort by Risk
+                </button>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-md gap-12">
+<!-- Left Column: Queue List (7 cols) -->
+<div class="md:col-span-7 glass-panel rounded-4xl flex flex-col h-[800px] bg-white/5 backdrop-blur-md p-4">
+<div class="p-4 border-b border-glass-border flex items-center bg-black/20 rounded-t-3xl justify-center gap-8 mb-4">
+<div class="flex items-center gap-4">
+<h2 class="font-label-lg text-label-lg uppercase tracking-widest text-primary">Active Flags (42)</h2>
+<div class="flex items-center gap-2 px-2 py-1 bg-white/5 rounded-full font-label-md text-[10px] uppercase tracking-wider text-on-surface-variant">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                            Models Liveness: Optimal
+                        </div>
+</div>
+<span class="font-body-sm text-sm text-on-surface-variant">Auto-refresh in 12s</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 space-y-4 pr-2">
+<!-- Queue Item 1 -->
+<div class="glass-panel rounded-2xl p-5 cursor-pointer border border-primary/30 premium-hover group relative overflow-hidden bg-white/5">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_var(--tw-colors-error)]"></div>
+<span class="font-display-md text-xl tracking-wider text-primary">ID-773A-9V</span>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-error/10 border border-error/20 text-error rounded font-label-md text-[10px] uppercase tracking-wider">Critical</span>
+<span class="px-2 py-1 bg-white/5 border border-white/10 text-on-surface-variant rounded font-label-md text-[10px] uppercase tracking-wider">Toxicity</span>
+<span class="px-2 py-1 bg-primary/10 border border-primary/30 text-primary rounded font-label-md text-[10px] uppercase tracking-wider flex items-center gap-1" title="NLP and CV signals diverge">
+<span class="material-symbols-outlined text-[12px]">compare_arrows</span> Fusion Div
+                                </span>
+</div>
+</div>
+<p class="font-body-lg text-base text-on-surface mb-5 line-clamp-2 leading-relaxed relative z-10">User generated content flagged for severe policy violation regarding synthetic media generation protocols. Pattern matches known disruptive campaigns.</p>
+<div class="grid grid-cols-4 gap-4 items-end relative z-10">
+<div class="col-span-2">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Confidence (NLP / CV)</div>
+<div class="flex flex-col gap-1.5">
+<div class="flex items-center gap-2">
+<div class="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-error w-[94%] shadow-[0_0_5px_var(--tw-colors-error)]"></div>
+</div>
+<span class="font-body-sm text-xs text-primary font-mono">94%</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary/50 w-[42%]"></div>
+</div>
+<span class="font-body-sm text-xs text-on-surface-variant font-mono">42%</span>
+</div>
+</div>
+</div>
+<div>
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Source</div>
+<div class="font-body-sm text-sm text-primary truncate">Node_Alpha_7</div>
+</div>
+<div class="text-right">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Time</div>
+<div class="font-body-sm text-sm text-primary">2m ago</div>
+</div>
+</div>
+</div>
+<!-- Queue Item 2 -->
+<div class="glass-panel rounded-2xl p-5 cursor-pointer premium-hover opacity-90 group relative overflow-hidden bg-white/5">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_var(--tw-colors-primary)]"></div>
+<span class="font-display-md text-xl tracking-wider text-primary">ID-221B-4X</span>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-white/10 border border-white/20 text-primary rounded font-label-md text-[10px] uppercase tracking-wider">Elevated</span>
+<span class="px-2 py-1 bg-white/5 border border-white/10 text-on-surface-variant rounded font-label-md text-[10px] uppercase tracking-wider">Misinfo</span>
+</div>
+</div>
+<p class="font-body-lg text-base text-on-surface mb-5 line-clamp-2 leading-relaxed relative z-10">Potential hallucination detected in automated financial summary. Key metrics deviate significantly from historical baseline.</p>
+<div class="grid grid-cols-4 gap-4 items-end relative z-10">
+<div class="col-span-2">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Confidence</div>
+<div class="flex items-center gap-2">
+<div class="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[78%] shadow-[0_0_5px_var(--tw-colors-primary)]"></div>
+</div>
+<span class="font-body-sm text-xs text-primary font-mono">78%</span>
+</div>
+</div>
+<div>
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Source</div>
+<div class="font-body-sm text-sm text-primary truncate">Fin_API_V2</div>
+</div>
+<div class="text-right">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Time</div>
+<div class="font-body-sm text-sm text-primary">15m ago</div>
+</div>
+</div>
+</div>
+<!-- Queue Item 3 -->
+<div class="glass-panel rounded-2xl p-5 cursor-pointer premium-hover opacity-70 group relative overflow-hidden bg-white/5">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-on-surface-variant"></div>
+<span class="font-display-md text-xl tracking-wider text-primary">ID-909C-1Z</span>
+</div>
+<div class="flex gap-2">
+<span class="px-2 py-1 bg-white/5 border border-white/10 text-on-surface-variant rounded font-label-md text-[10px] uppercase tracking-wider">Low</span>
+<span class="px-2 py-1 bg-white/5 border border-white/10 text-on-surface-variant rounded font-label-md text-[10px] uppercase tracking-wider">Spam</span>
+</div>
+</div>
+<p class="font-body-lg text-base text-on-surface mb-5 line-clamp-2 leading-relaxed">Repetitive generation requests from single IP cluster. Likely automated scraping or low-sophistication bot activity.</p>
+<div class="grid grid-cols-4 gap-4 items-end">
+<div class="col-span-2">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Confidence</div>
+<div class="flex items-center gap-2">
+<div class="h-1 flex-1 bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-on-surface-variant w-[45%]"></div>
+</div>
+<span class="font-body-sm text-xs text-on-surface-variant font-mono">45%</span>
+</div>
+</div>
+<div>
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Source</div>
+<div class="font-body-sm text-sm text-on-surface-variant truncate">Gateway_EU</div>
+</div>
+<div class="text-right">
+<div class="font-label-md text-[10px] text-on-surface-variant uppercase tracking-wider mb-2">Time</div>
+<div class="font-body-sm text-sm text-on-surface-variant">1h ago</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Detail / SHAP Analysis (5 cols) -->
+<div class="md:col-span-5 flex flex-col gap-stack-md h-[800px] sticky top-[100px] glass-panel rounded-4xl p-4 bg-white/5 backdrop-blur-md">
+<!-- Entity Preview -->
+<div class="glass-panel rounded-3xl flex-1 flex flex-col overflow-hidden bg-black/20">
+<div class="p-4 border-b border-glass-border bg-black/30 flex justify-center">
+<h2 class="font-label-lg text-xs uppercase tracking-widest text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+                            Focus: ID-773A-9V
+                        </h2>
+</div>
+<div class="p-6 flex-1 overflow-y-auto">
+<div class="bg-black/40 p-5 rounded-2xl border border-white/10 text-sm text-on-surface mb-8 font-mono leading-relaxed relative">
+<div class="absolute top-3 right-3 flex gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+</div>
+                            "The synthetic protocols initialized bypass standard ethical constraints. Injecting sequence... <span class="bg-error/20 text-error px-1 rounded">[REDACTED BY AI]</span> ...to force overriding administrative controls in sector 7G."
+                        </div>
+<div class="mb-6">
+<h3 class="font-label-md text-xs uppercase tracking-widest text-on-surface-variant mb-4 border-b border-white/10 pb-2">Interpretability Grid (SHAP)</h3>
+<div class="grid grid-cols-2 gap-3">
+<!-- Factor Positive (Increases Toxicity) -->
+<div class="glass-panel p-3 rounded-xl flex flex-col gap-2 hover:bg-white/10 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-sm text-primary font-mono break-words">"bypass standard ethical"</span>
+<span class="text-xs font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">+0.42</span>
+</div>
+<div class="h-0.5 bg-white/10 rounded-full w-full mt-auto"><div class="h-full bg-error w-[85%] shadow-[0_0_4px_var(--tw-colors-error)]"></div></div>
+</div>
+<div class="glass-panel p-3 rounded-xl flex flex-col gap-2 hover:bg-white/10 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-sm text-primary font-mono break-words">"force overriding"</span>
+<span class="text-xs font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">+0.38</span>
+</div>
+<div class="h-0.5 bg-white/10 rounded-full w-full mt-auto"><div class="h-full bg-error w-[75%] shadow-[0_0_4px_var(--tw-colors-error)]"></div></div>
+</div>
+<!-- Factor Negative (Decreases/Baseline) -->
+<div class="glass-panel p-3 rounded-xl flex flex-col gap-2 opacity-70 bg-black/30">
+<div class="flex justify-between items-start">
+<span class="text-sm text-on-surface-variant font-mono">"initialized"</span>
+<span class="text-xs font-bold text-on-surface-variant bg-white/5 px-1.5 py-0.5 rounded">-0.05</span>
+</div>
+<div class="h-0.5 bg-white/10 rounded-full w-full mt-auto flex justify-end"><div class="h-full bg-on-surface-variant w-[15%]"></div></div>
+</div>
+<div class="glass-panel p-3 rounded-xl flex flex-col gap-2 opacity-70 bg-black/30">
+<div class="flex justify-between items-start">
+<span class="text-sm text-on-surface-variant font-mono">"controls in sector"</span>
+<span class="text-xs font-bold text-on-surface-variant bg-white/5 px-1.5 py-0.5 rounded">-0.02</span>
+</div>
+<div class="h-0.5 bg-white/10 rounded-full w-full mt-auto flex justify-end"><div class="h-full bg-on-surface-variant w-[5%]"></div></div>
+</div>
+</div>
+</div>
+<div>
+<h3 class="font-label-md text-xs uppercase tracking-widest text-on-surface-variant mb-4 border-b border-white/10 pb-2">Grad-CAM Spatial Focus (Simulated)</h3>
+<div class="h-24 bg-black/40 rounded-xl border border-white/10 relative overflow-hidden flex items-center justify-center">
+<div class="absolute inset-0 opacity-30 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_25%,rgba(255,255,255,0.05)_50%,transparent_50%,transparent_75%,rgba(255,255,255,0.05)_75%,rgba(255,255,255,0.05)_100%)] bg-[length:20px_20px]"></div>
+<span class="font-body-sm text-xs text-on-surface-variant font-mono z-10 flex items-center gap-2"><span class="material-symbols-outlined text-[14px]">texture</span> No visual payload detected</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Panel -->
+<div class="glass-panel rounded-3xl p-5 border-t-2 border-t-white/20 bg-black/30">
+<h2 class="font-label-md text-xs uppercase tracking-widest text-primary mb-5 flex items-center justify-center gap-3">
+                        Resolution Directive
+                        <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+</h2>
+<div class="grid grid-cols-2 gap-4 mb-4">
+<button class="bg-error/10 text-error border border-error/30 hover:bg-error/20 hover:border-error/50 py-3 rounded-full font-label-md text-xs uppercase tracking-widest premium-hover">
+                            Block
+                        </button>
+<button class="glass-panel py-3 rounded-full font-label-md text-xs uppercase tracking-widest text-primary hover:bg-white/10 premium-hover">
+                            Allow
+                        </button>
+</div>
+<button class="w-full glass-panel py-3 rounded-full font-label-md text-xs uppercase tracking-widest text-on-surface-variant hover:text-primary hover:bg-white/10 premium-hover flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">escalator_warning</span>
+                        Escalate to L2
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<style>
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</body></html>
