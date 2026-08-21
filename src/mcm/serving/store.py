@@ -188,3 +188,19 @@ def _distribution(items: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
         return {k: round(v / total, 4) if total else 0.0 for k, v in d.items()}
 
     return {"toxicity": norm(tox), "misinformation": norm(mis)}
+
+
+def parse_utc(ts: str) -> float:
+    """ISO-8601 UTC timestamp -> epoch seconds.
+
+    Uses calendar.timegm rather than time.mktime. mktime interprets a
+    struct_time as *local* time, so parsing a UTC string with it shifts every
+    result by the host's offset — which showed up as items in the review queue
+    reporting an age of "5h ago" seconds after being created, on a UTC+5:30
+    machine. It went unnoticed in the decision endpoint only because both
+    timestamps there carry the same offset and it cancels.
+    """
+    import calendar
+    import time as _time
+
+    return calendar.timegm(_time.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S"))

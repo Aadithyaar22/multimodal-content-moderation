@@ -10,8 +10,8 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { getExplanation, getItem } from "@/lib/api";
-import type { Explanation, ItemDetail } from "@/lib/types";
+import { getAttributions, getExplanation, getItem, resolveApiUrl } from "@/lib/api";
+import type { Attributions, Explanation, ItemDetail } from "@/lib/types";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
 import { EvidencePanel } from "@/components/EvidencePanel";
@@ -27,6 +27,10 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
   const { id } = use(params);
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
+  // Attributions live on their own endpoint in the contract, so they are
+  // fetched separately rather than read off the item record — that way the
+  // panel appears as soon as the backend starts returning them.
+  const [attributions, setAttributions] = useState<Attributions | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,6 +41,9 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
     // Fired in parallel, rendered when it lands.
     getExplanation(id)
       .then((e) => !cancelled && setExplanation(e))
+      .catch(() => {});
+    getAttributions(id)
+      .then((a) => !cancelled && setAttributions(a))
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -66,9 +73,19 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
     );
   }
 
-  const task = item.heads.toxicity.score >= item.heads.misinformation.score
-    ? "toxicity"
-    : "misinformation";
+  const task =
+    (item.heads.toxicity?.score ?? 0) >= (item.heads.misinformation?.score ?? 0)
+      ? "toxicity"
+      : "misinformation";
+
+  // Only render the evidence panel when there is something in it. The backend
+  // returns a well-formed but empty payload until step 6 lands.
+  const hasAttributions = Boolean(
+    attributions &&
+      (attributions.text ||
+        attributions.image ||
+        attributions.cross_attention?.available),
+  );
 
   return (
     <div className="space-y-8">
@@ -101,11 +118,11 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
       {/* Evidence leads the explainability section: the Grad-CAM regions and the
           attention connectors are the most direct evidence of what the model
           actually related, so they sit above the per-head breakdown. */}
-      {item.attributions && (
+      {hasAttributions && (
         <div className="animate-rise">
           <EvidencePanel
-            attributions={item.attributions}
-            imageUrl={item.input.image_url}
+            attributions={attributions!}
+            imageUrl={resolveApiUrl(item.input.image_url)}
             caption={item.input.text}
           />
         </div>
@@ -155,9 +172,9 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
         </GlassPanel>
       </div>
 
-      {item.attributions?.text && (
+      {attributions?.text && (
         <GlassPanel title="Token attribution (SHAP)" className="animate-rise">
-          <ShapTokens tokens={item.attributions.text.tokens} />
+          <ShapTokens tokens={attributions.text.tokens} />
         </GlassPanel>
       )}
 

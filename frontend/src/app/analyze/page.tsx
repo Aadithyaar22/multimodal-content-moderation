@@ -14,8 +14,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { analyze, getExplanation } from "@/lib/api";
-import type { Explanation, ItemDetail } from "@/lib/types";
+import { analyze, getAttributions, getExplanation } from "@/lib/api";
+import type { Attributions, Explanation, ItemDetail } from "@/lib/types";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
 import { EmergentBadge, GlassPanel, Skeleton, VerdictBadge } from "@/components/ui";
@@ -31,6 +31,7 @@ export default function AnalyzePage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ItemDetail | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const [attributions, setAttributions] = useState<Attributions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,6 +61,7 @@ export default function AnalyzePage() {
     setError(null);
     setResult(null);
     setExplanation(null);
+    setAttributions(null);
 
     const form = new FormData();
     if (file) form.append("image", file);
@@ -74,6 +76,9 @@ export default function AnalyzePage() {
       getExplanation(item.item_id)
         .then(setExplanation)
         .catch(() => setExplanation(null));
+      getAttributions(item.item_id)
+        .then(setAttributions)
+        .catch(() => setAttributions(null));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -82,7 +87,8 @@ export default function AnalyzePage() {
   }
 
   const task =
-    result && result.heads.toxicity.score >= result.heads.misinformation.score
+    result &&
+    (result.heads.toxicity?.score ?? 0) >= (result.heads.misinformation?.score ?? 0)
       ? "toxicity"
       : "misinformation";
 
@@ -246,9 +252,9 @@ export default function AnalyzePage() {
             />
           </div>
 
-          {result.attributions?.text && (
+          {attributions?.text && (
             <GlassPanel title="Token attribution (SHAP)">
-              <ShapTokens tokens={result.attributions.text.tokens} />
+              <ShapTokens tokens={attributions.text.tokens} />
             </GlassPanel>
           )}
 
