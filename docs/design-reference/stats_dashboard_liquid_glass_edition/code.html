@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel AI - Stats Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@400;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=Noto+Serif:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#e5e2e1",
+                        "primary-fixed": "#e2e2e2",
+                        "surface-container-lowest": "#0e0e0e",
+                        "secondary": "#c4c7c8",
+                        "tertiary-container": "#e2e2e2",
+                        "on-primary": "#2f3131",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "on-error-container": "#ffdad6",
+                        "negative-adjustment": "#444748",
+                        "on-background": "#e5e2e1",
+                        "inverse-primary": "#5d5f5f",
+                        "pure-black": "#000000",
+                        "error": "#ffb4ab",
+                        "on-surface-variant": "#c4c7c8",
+                        "on-tertiary": "#2f3131",
+                        "surface-gradient-start": "rgba(255, 255, 255, 0.05)",
+                        "surface-tint": "#c6c6c7",
+                        "deep-grey": "#121212",
+                        "secondary-container": "#464a4b",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-tertiary-container": "#636565",
+                        "surface-gradient-end": "rgba(255, 255, 255, 0.01)",
+                        "primary-container": "#e2e2e2",
+                        "inverse-on-surface": "#313030",
+                        "inverse-surface": "#e5e2e1",
+                        "tertiary-fixed": "#e2e2e2",
+                        "glass-border": "rgba(255, 255, 255, 0.12)",
+                        "surface-container-highest": "#353434",
+                        "on-secondary": "#2d3132",
+                        "tertiary": "#ffffff",
+                        "surface-variant": "#353434",
+                        "on-error": "#690005",
+                        "surface-container": "#201f1f",
+                        "on-secondary-container": "#b6b9ba",
+                        "surface-container-low": "#1c1b1b",
+                        "surface-dim": "#141313",
+                        "surface": "#141313",
+                        "on-secondary-fixed": "#191c1d",
+                        "on-primary-container": "#636565",
+                        "primary-fixed-dim": "#c6c6c7",
+                        "secondary-fixed-dim": "#c4c7c8",
+                        "on-secondary-fixed-variant": "#444748",
+                        "anomaly-highlight": "#ffffff",
+                        "surface-container-high": "#2a2a2a",
+                        "background": "#141313",
+                        "primary": "#ffffff",
+                        "surface-bright": "#3a3939",
+                        "error-container": "#93000a",
+                        "outline-variant": "#444748",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "secondary-fixed": "#e0e3e4",
+                        "outline": "#8e9192",
+                        "on-primary-fixed-variant": "#454747",
+                        "on-primary-fixed": "#1a1c1c"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem",
+                        "3xl": "1.5rem",
+                        "4xl": "2rem"
+                    },
+                    spacing: {
+                        "margin": "3rem",
+                        "stack-sm": "12px",
+                        "stack-xl": "80px",
+                        "container-max": "1440px",
+                        "stack-md": "24px",
+                        "gutter": "2rem",
+                        "stack-xs": "4px",
+                        "stack-lg": "48px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Anybody"],
+                        "label-lg": ["Anybody"],
+                        "display-lg-mobile": ["Anybody"],
+                        "display-md": ["Anybody"],
+                        "headline-lg": ["Noto Serif"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Anybody"],
+                        "headline-md": ["Noto Serif"]
+                    },
+                    fontSize: {
+                        "label-md": ["11px", { lineHeight: "14px", letterSpacing: "0.1em", fontWeight: "700" }],
+                        "label-lg": ["14px", { lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "700" }],
+                        "display-lg-mobile": ["48px", { lineHeight: "44px", fontWeight: "900" }],
+                        "display-md": ["48px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "800" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", fontWeight: "400" }],
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "display-lg": ["84px", { lineHeight: "80px", letterSpacing: "-0.04em", fontWeight: "900" }],
+                        "headline-md": ["24px", { lineHeight: "32px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+            color: #e5e2e1;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Fluid Background Shader Simulation */
+        .ambient-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, rgba(20, 19, 19, 1) 0%, rgba(0, 0, 0, 1) 100%);
+            overflow: hidden;
+        }
+
+        .ambient-blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.4;
+            border-radius: 50%;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+
+        .blob-1 {
+            width: 60vw;
+            height: 60vh;
+            background: radial-gradient(circle, rgba(53, 52, 52, 0.8) 0%, transparent 70%);
+            top: -10%;
+            left: -10%;
+            animation-delay: 0s;
+        }
+
+        .blob-2 {
+            width: 50vw;
+            height: 50vh;
+            background: radial-gradient(circle, rgba(70, 74, 75, 0.5) 0%, transparent 70%);
+            bottom: -20%;
+            right: -10%;
+            animation-delay: -5s;
+            animation-duration: 25s;
+        }
+        
+        .blob-3 {
+            width: 40vw;
+            height: 40vh;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            top: 40%;
+            left: 30%;
+            animation-delay: -10s;
+            animation-duration: 30s;
+        }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(5%, 5%) scale(1.1); }
+            100% { transform: translate(-5%, -5%) scale(0.95); }
+        }
+
+        /* Glass Panel Styling */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-color: rgba(255, 255, 255, 0.24);
+        }
+
+        .glass-header-border {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        
+        /* Drifting Clouds Animation for specifically requested aesthetic */
+        .cloud-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" opacity="0.03"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.005" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+            animation: drift 120s linear infinite;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        
+        @keyframes drift {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative font-body-md text-body-md">
+<!-- Ambient Background -->
+<div class="ambient-background">
+<div class="ambient-blob blob-1"></div>
+<div class="ambient-blob blob-2"></div>
+<div class="ambient-blob blob-3"></div>
+<div class="cloud-layer"></div>
+</div>
+<!-- Top Navigation Bar (Dynamic Island style) -->
+<nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-3 gap-12 bg-surface-gradient-start/80 dark:bg-surface-gradient-start/80 rounded-full mt-6 mx-auto w-fit max-w-[90%] backdrop-blur-3xl border border-glass-border shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+<div class="flex items-center">
+<span class="font-display-md text-display-md font-black tracking-tighter text-primary dark:text-primary">Sentinel AI</span>
+</div>
+<div class="hidden md:flex items-center gap-8 font-label-lg text-label-lg uppercase tracking-widest">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors flex flex-col items-center gap-1 group" href="#">
+<span>Queue</span>
+<div class="h-0.5 w-0 bg-primary group-hover:w-full transition-all duration-300"></div>
+</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors flex flex-col items-center gap-1 group" href="#">
+<span>Analyze</span>
+<div class="h-0.5 w-0 bg-primary group-hover:w-full transition-all duration-300"></div>
+</a>
+<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 flex flex-col items-center gap-1" href="#">
+<span>Dashboard</span>
+</a>
+</div>
+<div class="flex items-center">
+<button class="bg-primary text-pure-black font-label-lg text-label-lg uppercase tracking-widest px-6 py-2 rounded-full hover:bg-opacity-90 transition-all duration-300 active:scale-95">
+                New Report
+            </button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-margin pt-stack-xl pb-margin mt-24 relative z-10 flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<header class="text-center flex flex-col gap-stack-sm mb-8">
+<h1 class="font-display-lg text-display-lg text-primary">System Dashboard</h1>
+<p class="font-headline-md text-headline-md text-on-surface-variant max-w-2xl mx-auto">Real-time aggregate forensics and performance metrics across the Sentinel network.</p>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-stack-md">
+<!-- Primary Metric: Queue Depth (Spans 8 cols) -->
+<section class="glass-panel rounded-4xl col-span-1 md:col-span-8 flex flex-col overflow-hidden relative">
+<div class="p-6 glass-header-border flex justify-center items-center">
+<h2 class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface text-center">Active Investigation Queue</h2>
+</div>
+<div class="p-8 flex-grow flex flex-col items-center justify-center relative">
+<!-- Subtle background pulse for active queue -->
+<div class="absolute inset-0 bg-primary/5 animate-pulse rounded-b-4xl"></div>
+<div class="text-center z-10">
+<span class="font-display-lg text-[120px] leading-none text-primary font-black tracking-tighter block mb-2">1,204</span>
+<span class="font-label-lg text-label-lg text-on-surface-variant uppercase tracking-widest flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+                            Critical Priority Cases
+                        </span>
+</div>
+<!-- Decorative Data Graph Placeholder -->
+<div class="w-full h-32 mt-8 flex items-end gap-2 px-8 opacity-60">
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[30%]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[45%]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[20%]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[60%]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[80%]"></div>
+<div class="flex-1 bg-primary/80 rounded-t-sm h-[100%] shadow-[0_0_15px_rgba(255,255,255,0.5)]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[50%]"></div>
+<div class="flex-1 bg-surface-container-highest rounded-t-sm h-[35%]"></div>
+</div>
+</div>
+</section>
+<!-- Secondary Metric: Time to Decision (Spans 4 cols) -->
+<section class="glass-panel rounded-4xl col-span-1 md:col-span-4 flex flex-col overflow-hidden">
+<div class="p-6 glass-header-border flex justify-center items-center">
+<h2 class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface text-center">Median TTD</h2>
+</div>
+<div class="p-8 flex-grow flex flex-col items-center justify-center text-center gap-4">
+<span class="material-symbols-outlined text-4xl text-primary opacity-80">timer</span>
+<div class="flex items-baseline justify-center gap-1">
+<span class="font-display-md text-display-md text-primary">0.84</span>
+<span class="font-headline-md text-headline-md text-on-surface-variant">ms</span>
+</div>
+<div class="w-full max-w-[200px] h-1 bg-surface-container-highest rounded-full overflow-hidden mt-4">
+<div class="h-full bg-primary w-[15%] rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mt-2">-12% vs last hr</span>
+</div>
+</section>
+<!-- Tertiary Metric: Agreement Rate (Spans 4 cols) -->
+<section class="glass-panel rounded-4xl col-span-1 md:col-span-4 flex flex-col overflow-hidden">
+<div class="p-6 glass-header-border flex justify-center items-center">
+<h2 class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface text-center">Consensus Rate</h2>
+</div>
+<div class="p-8 flex-grow flex flex-col items-center justify-center text-center gap-6">
+<!-- Circular Progress Indicator -->
+<div class="relative w-32 h-32 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="45" stroke="rgba(255,255,255,0.1)" stroke-width="8"></circle>
+<circle class="transition-all duration-1000 ease-out" cx="50" cy="50" fill="none" r="45" stroke="#ffffff" stroke-dasharray="283" stroke-dashoffset="14" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<span class="font-display-md text-3xl text-primary font-black">95%</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Ensemble Agreement</span>
+</div>
+</section>
+<!-- Class Distributions (Spans 8 cols) -->
+<section class="glass-panel rounded-4xl col-span-1 md:col-span-8 flex flex-col overflow-hidden">
+<div class="p-6 glass-header-border flex justify-center items-center">
+<h2 class="font-label-lg text-label-lg uppercase tracking-widest text-on-surface text-center">Threat Class Distribution</h2>
+</div>
+<div class="p-8 flex-grow flex flex-col justify-center gap-6">
+<!-- Distribution Item 1 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center px-2">
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-widest">Anomalous Activity</span>
+<span class="font-body-md text-body-md text-primary font-bold">42%</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary/80 w-[42%] rounded-full shadow-[0_0_8px_rgba(255,255,255,0.4)]"></div>
+</div>
+</div>
+<!-- Distribution Item 2 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center px-2">
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-widest">Known Signatures</span>
+<span class="font-body-md text-body-md text-primary font-bold">38%</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary/60 w-[38%] rounded-full"></div>
+</div>
+</div>
+<!-- Distribution Item 3 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center px-2">
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-widest">False Positives (Filtered)</span>
+<span class="font-body-md text-body-md text-primary font-bold">15%</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary/40 w-[15%] rounded-full"></div>
+</div>
+</div>
+<!-- Distribution Item 4 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center px-2">
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-widest">Unclassified / Manual Review</span>
+<span class="font-body-md text-body-md text-primary font-bold">5%</span>
+</div>
+<div class="w-full h-3 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary/20 w-[5%] rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>

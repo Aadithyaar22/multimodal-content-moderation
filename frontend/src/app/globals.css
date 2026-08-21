@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Sentinel Noir — ported from the Stitch design system.
+
+   The governing rule from that system: meaning is carried by luminosity and
+   stroke weight, not hue. That is kept, and it turns out to suit this project.
+   The three modality streams (vision-only, language-only, fused) read as a
+   luminosity ladder with pure white reserved for the fused signal. Introducing
+   two accent hues for the modalities would have said the same thing while
+   breaking the discipline that makes the aesthetic work.
+
+   The one exception is severity. Red appears only on harmful classifications
+   and nowhere else, so it never competes for attention.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Foundation */
+  --color-void: #000000;
+  --color-surface: #141313;
+  --color-surface-dim: #0e0e0e;
+  --color-surface-low: #1c1b1b;
+  --color-surface-mid: #201f1f;
+  --color-surface-high: #2a2a2a;
+  --color-surface-highest: #353434;
+
+  /* Content */
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #c4c7c8;
+  --color-outline: #8e9192;
+  --color-outline-variant: #444748;
+
+  /* Glass */
+  --color-glass-border: rgba(255, 255, 255, 0.12);
+  --color-glass-bright: rgba(255, 255, 255, 0.24);
+
+  /* Modality ladder — the project's core comparison, expressed as luminosity.
+     Vision dimmest, language mid, fusion pure white. The gap between the
+     unimodal rungs and the fused one is what the reader should notice. */
+  --color-stream-vision: #5d5f5f;
+  --color-stream-language: #8e9192;
+  --color-stream-fusion: #ffffff;
+
+  /* Severity — the only hue in the system */
+  --color-harm: #ffb4ab;
+  --color-harm-dim: #93000a;
+
+  /* Typography */
+  --font-display: "Anybody", system-ui, sans-serif;
+  --font-editorial: "Noto Serif", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  /* Motion — fast out, long settle */
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-on-surface);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------------------
+   Glass panels — depth by translucency, never by shadow.
+--------------------------------------------------------------------------- */
+
+@utility glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+@utility glass-hover {
+  transition:
+    background 260ms var(--ease-entrance),
+    border-color 260ms var(--ease-entrance);
+}
+
+.glass-hover:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  border-color: var(--color-glass-bright);
+}
+
+/* Technical terminal labels */
+@utility label-tech {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+@utility label-tech-lg {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 14px;
+  line-height: 16px;
+}
+
+/* Numerics must not reflow while they animate */
+@utility numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+--------------------------------------------------------------------------- */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.65;
+    transform: scale(0.85);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-2%, -1.5%, 0);
+  }
+}
+
+@utility animate-rise {
+  animation: rise-in 420ms var(--ease-entrance) both;
+}
+
+@utility animate-bar {
+  transform-origin: left;
+  animation: bar-fill 620ms var(--ease-entrance) both;
+}
+
+@utility animate-ring {
+  animation: pulse-ring 1600ms var(--ease-entrance) infinite;
+}
+
+/* Ambient floor texture — kept beneath conscious notice */
+@utility ambient-field {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.04), transparent 45%),
+    radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.03), transparent 40%);
+  animation: drift 24s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   Reduced motion is not a degraded path. The modality comparison is the point
+   of the page, so it must be fully readable with every animation removed.
+--------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-dim);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-highest);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline-variant);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-on-surface);
+  outline-offset: 2px;
+}

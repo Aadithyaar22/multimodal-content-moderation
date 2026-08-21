@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel AI - Vanguard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary": "#2f3131",
+                      "on-primary-container": "#636565",
+                      "on-primary": "#2f3131",
+                      "surface-container-lowest": "#0e0e0e",
+                      "surface-container-high": "#2a2a2a",
+                      "on-secondary-container": "#b6b9ba",
+                      "tertiary-container": "#e2e2e2",
+                      "surface-variant": "#353434",
+                      "tertiary-fixed": "#e2e2e2",
+                      "surface-container-highest": "#353434",
+                      "secondary-container": "#464a4b",
+                      "secondary-fixed-dim": "#c4c7c8",
+                      "secondary-fixed": "#e0e3e4",
+                      "surface-bright": "#3a3939",
+                      "error": "#ffb4ab",
+                      "on-primary-fixed-variant": "#454747",
+                      "secondary": "#c4c7c8",
+                      "on-error-container": "#ffdad6",
+                      "surface-dim": "#141313",
+                      "glass-border": "rgba(255, 255, 255, 0.12)",
+                      "background": "#141313",
+                      "on-tertiary-fixed-variant": "#454747",
+                      "error-container": "#93000a",
+                      "surface": "#141313",
+                      "inverse-primary": "#5d5f5f",
+                      "on-background": "#e5e2e1",
+                      "primary-fixed": "#e2e2e2",
+                      "tertiary": "#ffffff",
+                      "pure-black": "#000000",
+                      "primary-fixed-dim": "#c6c6c7",
+                      "primary": "#ffffff",
+                      "on-surface": "#e5e2e1",
+                      "surface-tint": "#c6c6c7",
+                      "on-secondary-fixed": "#191c1d",
+                      "tertiary-fixed-dim": "#c6c6c7",
+                      "anomaly-highlight": "#ffffff",
+                      "primary-container": "#e2e2e2",
+                      "on-error": "#690005",
+                      "on-secondary-fixed-variant": "#444748",
+                      "surface-gradient-end": "rgba(255, 255, 255, 0.01)",
+                      "surface-container-low": "#1c1b1b",
+                      "surface-container": "#201f1f",
+                      "inverse-surface": "#e5e2e1",
+                      "outline-variant": "#444748",
+                      "inverse-on-surface": "#313030",
+                      "on-surface-variant": "#c4c7c8",
+                      "deep-grey": "#121212",
+                      "on-tertiary-fixed": "#1a1c1c",
+                      "outline": "#8e9192",
+                      "on-primary-fixed": "#1a1c1c",
+                      "surface-gradient-start": "rgba(255, 255, 255, 0.05)",
+                      "on-tertiary-container": "#636565",
+                      "on-secondary": "#2d3132",
+                      "negative-adjustment": "#444748"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-lg": "48px",
+                      "stack-xl": "80px",
+                      "margin": "3rem",
+                      "gutter": "2rem",
+                      "stack-sm": "12px",
+                      "stack-xs": "4px",
+                      "stack-md": "24px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "display-lg-mobile": [
+                              "Anybody"
+                      ],
+                      "display-md": [
+                              "Anybody"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-lg": [
+                              "Anybody"
+                      ],
+                      "display-lg": [
+                              "Anybody"
+                      ],
+                      "headline-lg": [
+                              "Noto Serif"
+                      ],
+                      "headline-md": [
+                              "Noto Serif"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Anybody"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg-mobile": [
+                              "48px",
+                              {
+                                      "lineHeight": "44px",
+                                      "fontWeight": "900"
+                              }
+                      ],
+                      "display-md": [
+                              "48px",
+                              {
+                                      "lineHeight": "48px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.08em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display-lg": [
+                              "120px",
+                              {
+                                      "lineHeight": "110px",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "900"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .shader-mix {
+            display: none;
+        }
+        
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        @keyframes shimmer {
+            100% {
+                transform: skewX(-12deg) translateX(200%);
+            }
+        }
+    </style>
+</head>
+<body class="bg-pure-black text-on-surface min-h-screen flex flex-col font-body-md overflow-hidden antialiased selection:bg-primary selection:text-on-primary">
+<!-- STITCH_SHADER_START:ANIMATION_20 class="fixed inset-0 w-full h-full -z-10" -->
+<div class="fixed inset-0 w-full h-full -z-10" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_20" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_20');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+
+varying vec2 v_texCoord;
+
+// Simplex 2D noise for organic flow
+vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
+float snoise(vec2 v){
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy) );
+  vec2 x0 = v -   i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod(i, 289.0);
+  vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+  + i.x + vec3(0.0, i1.x, 1.0 ));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+    dot(x12.zw,x12.zw)), 0.0);
+  m = m*m ;
+  m = m*m ;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 a0 = x - floor(x + 0.5);
+  float m3 = m.z * (h.z * x0.x + h.z * x0.y); // This line is just a placeholder to use vars
+  vec3 g;
+  g.x  = a0.x  * x0.x  + h.x  * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+void main() {
+    vec2 uv = v_texCoord;
+    vec2 p = uv * 2.0 - 1.0;
+    p.x *= u_resolution.x / u_resolution.y;
+
+    float t = u_time * 0.15;
+    
+    // Liquid glass motion logic
+    // We create a "refractive" distortion field
+    vec2 distort = uv;
+    for(int i = 1; i < 4; i++) {
+        float fi = float(i);
+        distort.x += 0.3 / fi * sin(fi * 3.0 * uv.y + t + fi);
+        distort.y += 0.3 / fi * cos(fi * 3.0 * uv.x + t + fi);
+    }
+    
+    // Noise layers for silky texture
+    float n = snoise(distort * 2.5 + t * 0.5);
+    n += snoise(distort * 5.0 - t * 0.3) * 0.5;
+    
+    // Calculate light reflection (specular-like)
+    // We treat 'n' as a height map and find the gradient
+    float eps = 0.01;
+    float n_x = snoise((distort + vec2(eps, 0.0)) * 2.5 + t * 0.5) - n;
+    float n_y = snoise((distort + vec2(0.0, eps)) * 2.5 + t * 0.5) - n;
+    vec2 grad = vec2(n_x, n_y) / eps;
+    
+    // Virtual light source following mouse or ambient
+    vec2 lightPos = (u_mouse.xy / u_resolution.xy) * 2.0 - 1.0;
+    if(length(u_mouse) < 10.0) lightPos = vec2(sin(t), cos(t)); // Ambient fallback
+    
+    float diff = max(dot(normalize(vec3(grad, 1.0)), normalize(vec3(lightPos, 1.0))), 0.0);
+    float spec = pow(diff, 32.0); // Sharp "glassy" highlight
+    
+    // Monochromatic Palette: Silky mixing
+    vec3 black = vec3(0.02, 0.02, 0.02);
+    vec3 deepGrey = vec3(0.12, 0.12, 0.14);
+    vec3 silkyWhite = vec3(0.95, 0.95, 0.98);
+    
+    // Base flow
+    vec3 color = mix(black, deepGrey, n * 0.5 + 0.5);
+    
+    // Add silky white plummets
+    float plumes = smoothstep(0.4, 0.9, n);
+    color = mix(color, silkyWhite, plumes * 0.4);
+    
+    // Add sharp specular highlights for that "liquid glass" look
+    color += spec * 0.4;
+    
+    // Vignette for depth
+    float vignette = 1.0 - length(p * 0.5);
+    color *= smoothstep(0.0, 0.8, vignette);
+
+    gl_FragColor = vec4(color, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_20 -->
+<!-- Main Content Area -->
+<main class="flex-grow flex flex-col items-center justify-center relative z-10 px-margin h-screen">
+<div class="max-w-container-max w-full mx-auto flex flex-col items-center text-center mix-blend-difference text-white">
+<!-- Super Headline -->
+<h1 class="font-display-lg text-[160px] leading-[140px] italic text-white uppercase mb-stack-md tracking-tighter opacity-100 drop-shadow-2xl font-black">
+                Vanguard
+            </h1>
+<!-- Tagline (Serif) -->
+<p class="font-headline-lg text-headline-lg text-white/90 max-w-3xl mx-auto mb-stack-xl italic tracking-wide">
+                Absolute clarity in the face of complex data.
+            </p>
+<!-- Call to Action -->
+<button class="group relative overflow-hidden bg-white text-black rounded-full px-12 py-4 font-label-lg text-label-lg uppercase tracking-widest transition-transform duration-300 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black mt-4">
+<span class="relative z-10 flex items-center gap-2 font-bold">
+                    Start Review
+                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</span>
+<div class="absolute inset-0 bg-black/10 transform -skew-x-12 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+</button>
+</div>
+<!-- Footer / Subtle Information -->
+<div class="absolute bottom-margin w-full text-center flex flex-col items-center gap-stack-sm opacity-60 mix-blend-difference text-white">
+<p class="font-label-md text-label-md uppercase tracking-widest">
+                Sentinel AI Forensics
+            </p>
+<div class="w-12 h-px bg-white/40"></div>
+</div>
+</main>
+</body></html>
