@@ -38,3 +38,6 @@ frontend/node_modules/
 frontend/.next/
 frontend/out/
 frontend/.env.local
+
+# Model checkpoints
+checkpoints/
