@@ -387,36 +387,52 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
-/* Outlined type: white fill with a black stroke painted behind it.
+/* Chromed type: a metallic gradient fill lifted off the surface by stacked
+   shadows.
 
-   This is what frees the field. Difference blending — the obvious choice for
-   black-and-white — drives contrast to zero wherever the background is
-   mid-grey, so the veins had to be routed around the type to keep it readable.
-   An outlined letterform is legible over any value instead: the fill carries it
-   over black, the stroke defines it when white flows underneath, and over grey
-   both contribute. With the type independent of what is behind it, the molten
-   white can flow straight through the centre of the frame.
+   Replaces an earlier stroke-based outline, which solved legibility but read as
+   a sticker — a hard black keyline around white type is the flattest possible
+   answer on a surface built entirely from soft gradients, and at subtitle size
+   the stroke bloomed the full stop into a star.
 
-   paint-order puts the stroke behind the fill so the letterforms stay crisp
-   rather than being eaten into from the outside. The text-shadow ring is a
-   fallback for engines that ignore paint-order on HTML text. */
-@utility outlined {
+   Depth comes from three stacked drop-shadows rather than one: a tight, nearly
+   opaque contact shadow that reads as the edge of an extrusion, a mid shadow
+   for form, and a wide soft one for the cast. That stack also does the work the
+   outline was there for — the contact shadow keeps the letterforms separated
+   from the molten white when it flows underneath.
+
+   drop-shadow, not text-shadow: the fill is a gradient clipped to the glyphs,
+   so the text itself is transparent and a text-shadow would show straight
+   through it. filter operates on the rendered result and does not. */
+/* Small text gets the depth stack but a solid fill. A metallic gradient needs
+   enough glyph height for the light-to-dark-to-light sweep to resolve; at
+   subtitle size it compresses into a single muddy mid-grey and reads as washed
+   out rather than as metal. */
+@utility chromed {
   color: #ffffff;
-  paint-order: stroke fill;
-  /* 2px, not 1.5. At subtitle size a lighter stroke survives on black but goes
-     marginal over full white, which is exactly the case the outline exists for. */
-  -webkit-text-stroke: 2px #000000;
-  text-shadow:
-    0 0 2px rgba(0, 0, 0, 0.85),
-    0 1px 4px rgba(0, 0, 0, 0.5);
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.9))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 8px 22px rgba(0, 0, 0, 0.6));
 }
 
-/* Heavier stroke for display sizes, where 1.5px would disappear. */
-@utility outlined-display {
-  color: #ffffff;
-  paint-order: stroke fill;
-  -webkit-text-stroke: 4px #000000;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+/* Display sizes carry a deeper extrusion; the same offsets that read as a lift
+   at 20px vanish entirely at 200px. */
+@utility chromed-display {
+  background: linear-gradient(
+    177deg,
+    #ffffff 0%,
+    #ffffff 30%,
+    #bdbdbd 50%,
+    #ededed 64%,
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.9))
+    drop-shadow(0 5px 2px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 14px 24px rgba(0, 0, 0, 0.7))
+    drop-shadow(0 34px 70px rgba(0, 0, 0, 0.5));
 }
 
 @media (prefers-reduced-motion: reduce) {
