@@ -29,6 +29,7 @@ const FRAG = `precision highp float;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_mouse;
+uniform float u_float;
 
 varying vec2 v_texCoord;
 
@@ -63,10 +64,16 @@ void main() {
     vec2 p = uv * 2.0 - 1.0;
     p.x *= u_resolution.x / u_resolution.y;
 
-    float t = u_time * 0.15;
+    float t = u_time * 0.32;
+
+    // A slow, continuous drift applied on top of the oscillating distortion.
+    // Without it every term is a sin or cos of t, so the field returns to where
+    // it started and reads as breathing in place rather than flowing. The drift
+    // never repeats, which is what makes the plumes appear to travel.
+    vec2 flow = vec2(sin(u_time * 0.05) * 0.09, -u_time * u_float);
 
     // Refractive distortion field.
-    vec2 distort = uv;
+    vec2 distort = uv + flow;
     for(int i = 1; i < 4; i++) {
         float fi = float(i);
         distort.x += 0.3 / fi * sin(fi * 3.0 * uv.y + t + fi);
@@ -167,6 +174,7 @@ export function LiquidGlassShader() {
     const uTime = gl.getUniformLocation(prog, "u_time");
     const uRes = gl.getUniformLocation(prog, "u_resolution");
     const uMouse = gl.getUniformLocation(prog, "u_mouse");
+    const uFloat = gl.getUniformLocation(prog, "u_float");
 
     const mouse = { x: canvas.width / 2, y: canvas.height / 2 };
     const onMouseMove = (event: MouseEvent) => {
@@ -180,28 +188,52 @@ export function LiquidGlassShader() {
     };
     window.addEventListener("mousemove", onMouseMove);
 
-    // Reduced motion freezes the field at a representative moment rather than
-    // hiding it. The surface is the page's whole visual identity; removing it
-    // would leave a blank black screen, while holding it still removes the
-    // vestibular trigger and keeps the design intact.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Reduced motion slows the field rather than stopping it.
+    //
+    // An earlier version froze it to a single frame, which is the right
+    // treatment for parallax or anything that tracks scroll, but wrong here: a
+    // diffuse, low-contrast, non-directional wash at a quarter speed is not a
+    // vestibular trigger, and freezing it removed the one thing that makes the
+    // page feel alive. It also failed silently — a browser reporting the
+    // preference rendered exactly one frame and looked like a broken shader.
+    //
+    // The query is watched rather than read once, so toggling the OS setting
+    // takes effect without a reload.
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let rate = motionQuery.matches ? 0.25 : 1;
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      rate = e.matches ? 0.25 : 1;
+    };
+    motionQuery.addEventListener("change", onMotionChange);
 
     let raf = 0;
+    let clock = 0;
+    let last = 0;
     const render = (t: number) => {
+      // Time is accumulated at the current rate instead of being read straight
+      // from the frame timestamp, so a rate change eases from wherever the
+      // field currently is rather than jumping.
+      const dt = last ? Math.min(t - last, 64) : 16;
+      last = t;
+      clock += dt * 0.001 * rate;
+
       if (!observer) syncSize();
       gl.viewport(0, 0, canvas.width, canvas.height);
-      if (uTime) gl.uniform1f(uTime, reduced ? 12 : t * 0.001);
+      if (uTime) gl.uniform1f(uTime, clock);
       if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
       if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+      // Vertical drift rate for the plumes.
+      if (uFloat) gl.uniform1f(uFloat, 0.012);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      if (!reduced) raf = requestAnimationFrame(render);
+      raf = requestAnimationFrame(render);
     };
-    render(0);
+    raf = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(raf);
       observer?.disconnect();
       window.removeEventListener("mousemove", onMouseMove);
+      motionQuery.removeEventListener("change", onMotionChange);
       gl.deleteProgram(prog);
       gl.deleteBuffer(buf);
       // Deliberately not calling WEBGL_lose_context here. loseContext() kills
