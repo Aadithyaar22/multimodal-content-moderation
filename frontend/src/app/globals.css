@@ -223,26 +223,37 @@ body {
    so the field never visibly loops. Only transform and opacity animate.
 --------------------------------------------------------------------------- */
 
+/* The veins sweep clear across the frame, including straight through the centre.
+   Outlined type stays readable over any value, so nothing has to be routed
+   around the text any more.
+
+   Long periods and wide travel are what make it read as flow rather than as a
+   pulse: each mass crosses most of the frame over its cycle instead of bobbing
+   around a fixed point. */
 @keyframes molten-a {
-  0%,
-  100% {
-    transform: translate3d(-8%, -4%, 0) scale(1.1) rotate(0deg);
+  0% {
+    transform: translate3d(-34%, -10%, 0) scale(1.05) rotate(0deg);
   }
   33% {
-    transform: translate3d(6%, 8%, 0) scale(1.35) rotate(8deg);
+    transform: translate3d(6%, 14%, 0) scale(1.35) rotate(10deg);
   }
   66% {
-    transform: translate3d(10%, -6%, 0) scale(1.15) rotate(-6deg);
+    transform: translate3d(30%, -12%, 0) scale(1.15) rotate(-8deg);
+  }
+  100% {
+    transform: translate3d(-34%, -10%, 0) scale(1.05) rotate(0deg);
   }
 }
 
 @keyframes molten-b {
-  0%,
-  100% {
-    transform: translate3d(12%, 10%, 0) scale(1.25) rotate(0deg);
+  0% {
+    transform: translate3d(32%, 16%, 0) scale(1.2) rotate(0deg);
   }
   50% {
-    transform: translate3d(-10%, -8%, 0) scale(1.5) rotate(-12deg);
+    transform: translate3d(-28%, -14%, 0) scale(1.45) rotate(-14deg);
+  }
+  100% {
+    transform: translate3d(32%, 16%, 0) scale(1.2) rotate(0deg);
   }
 }
 
@@ -274,44 +285,81 @@ body {
   will-change: transform;
 }
 
-/* Stops are pushed toward the extremes rather than spread evenly. An even ramp
-   fills most of the frame with mid-grey, which is both the least interesting
-   part of a metal surface and the range where difference-blended type loses all
-   contrast. */
+/* The field is black-dominant: tight, bright veins of white flowing through a
+   deep ground, rather than a even wash of grey.
+   Stops are compressed hard toward the extremes — full white holds until 22%,
+   then falls away fast. A gentle ramp would spread mid-grey across most of the
+   frame, which is both the least interesting part of a metal surface and the
+   exact range where difference-blended type loses all contrast. Keeping the
+   transitions narrow is what lets the display type stay legible while still
+   inverting across a boundary. */
+/* Large, bright masses that cross the whole frame. Full white is held to 30%
+   of the radius before falling away, which keeps the core molten rather than
+   hazy while the long tail still blends into the black ground. */
 .liquid-a {
   background: radial-gradient(
-    ellipse 44% 36% at 32% 42%,
+    ellipse 46% 40% at 30% 42%,
     #ffffff 0%,
-    #ffffff 18%,
-    rgba(255, 255, 255, 0.6) 42%,
-    rgba(255, 255, 255, 0) 70%
+    #ffffff 30%,
+    rgba(255, 255, 255, 0.55) 52%,
+    rgba(255, 255, 255, 0) 74%
   );
-  filter: blur(90px);
-  animation: molten-a 34s ease-in-out infinite;
+  filter: blur(60px);
+  animation: molten-a 38s ease-in-out infinite;
 }
 
 .liquid-b {
   background: radial-gradient(
-    ellipse 40% 46% at 72% 70%,
+    ellipse 44% 46% at 70% 66%,
     #ffffff 0%,
-    rgba(255, 255, 255, 0.55) 40%,
+    #ffffff 26%,
+    rgba(255, 255, 255, 0.5) 50%,
     rgba(255, 255, 255, 0) 72%
   );
-  filter: blur(110px);
-  animation: molten-b 47s ease-in-out infinite;
+  filter: blur(72px);
+  animation: molten-b 53s ease-in-out infinite;
 }
 
-/* A black mass moving through the white ones is what carves the dark channels
-   and keeps the field from flattening into an even glow. */
+/* Large black masses moving through the white veins. These do most of the work:
+   they carve the dark channels, keep the ground deep, and stop the field
+   flattening into an even glow. */
 .liquid-c {
-  background: radial-gradient(
-    ellipse 52% 34% at 50% 24%,
-    #000000 0%,
-    rgba(0, 0, 0, 0.85) 45%,
-    rgba(0, 0, 0, 0) 75%
-  );
-  filter: blur(80px);
+  background:
+    radial-gradient(
+      ellipse 62% 46% at 50% 18%,
+      #000000 0%,
+      #000000 42%,
+      rgba(0, 0, 0, 0.7) 62%,
+      rgba(0, 0, 0, 0) 82%
+    ),
+    radial-gradient(
+      ellipse 54% 40% at 46% 96%,
+      #000000 0%,
+      #000000 38%,
+      rgba(0, 0, 0, 0.65) 60%,
+      rgba(0, 0, 0, 0) 80%
+    );
+  filter: blur(70px);
   animation: molten-c 41s ease-in-out infinite;
+}
+
+/* Two jobs. The first gradient is a broad, very soft well over the centre that
+   guarantees the type band stays dark enough for difference-blended text to
+   resolve near-white, whatever the veins are doing. It is wide and gentle
+   enough to be invisible as a shape — it reads as depth, not as a scrim. The
+   second holds the frame edges black so the veins look lit from within rather
+   than laid on top. */
+.liquid-depth {
+  position: absolute;
+  inset: 0;
+  /* Edge vignette only. The central well is gone: outlined type no longer needs
+     a dark band beneath it, so the veins are free to run through the middle. */
+  background: radial-gradient(
+    ellipse 88% 80% at 50% 50%,
+    transparent 0%,
+    rgba(0, 0, 0, 0.18) 68%,
+    rgba(0, 0, 0, 0.72) 100%
+  );
 }
 
 .liquid-sheen {
@@ -319,13 +367,13 @@ body {
   inset: -30%;
   background: linear-gradient(
     104deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.55) 47%,
-    rgba(255, 255, 255, 0.9) 50%,
-    rgba(255, 255, 255, 0.55) 53%,
-    transparent 70%
+    transparent 34%,
+    rgba(255, 255, 255, 0.4) 47%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.4) 53%,
+    transparent 66%
   );
-  filter: blur(58px);
+  filter: blur(46px);
   mix-blend-mode: overlay;
   animation: sheen-drift 29s ease-in-out infinite;
   will-change: transform, opacity;
@@ -339,28 +387,36 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
-/* Type that inverts as it crosses a boundary. This is what makes the black and
-   white read as one continuous surface rather than two stacked regions.
+/* Outlined type: white fill with a black stroke painted behind it.
 
-   It is reserved for display type only. Difference blending drives contrast to
-   zero wherever the background is mid-grey — white over rgb(128,128,128)
-   renders as rgb(128,128,128) — which oversized letterforms survive on sheer
-   mass but body copy does not. Small text uses `.on-liquid` instead. */
-@utility blend-invert {
-  mix-blend-mode: difference;
+   This is what frees the field. Difference blending — the obvious choice for
+   black-and-white — drives contrast to zero wherever the background is
+   mid-grey, so the veins had to be routed around the type to keep it readable.
+   An outlined letterform is legible over any value instead: the fill carries it
+   over black, the stroke defines it when white flows underneath, and over grey
+   both contribute. With the type independent of what is behind it, the molten
+   white can flow straight through the centre of the frame.
+
+   paint-order puts the stroke behind the fill so the letterforms stay crisp
+   rather than being eaten into from the outside. The text-shadow ring is a
+   fallback for engines that ignore paint-order on HTML text. */
+@utility outlined {
   color: #ffffff;
+  paint-order: stroke fill;
+  /* 2px, not 1.5. At subtitle size a lighter stroke survives on black but goes
+     marginal over full white, which is exactly the case the outline exists for. */
+  -webkit-text-stroke: 2px #000000;
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.85),
+    0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Legible over any part of the molten field.
-   A tight dark halo rather than a panel: it holds contrast across black, white
-   and everything between, without cutting a visible box into the surface and
-   breaking the continuity the field exists to create. */
-@utility on-liquid {
+/* Heavier stroke for display sizes, where 1.5px would disappear. */
+@utility outlined-display {
   color: #ffffff;
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.9),
-    0 2px 12px rgba(0, 0, 0, 0.7),
-    0 0 32px rgba(0, 0, 0, 0.5);
+  paint-order: stroke fill;
+  -webkit-text-stroke: 4px #000000;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
