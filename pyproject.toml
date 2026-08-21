@@ -30,7 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 xai = ["shap>=0.46", "grad-cam>=1.5", "lime>=0.2.0.1", "matplotlib>=3.9"]
 cv = ["opencv-python-headless>=4.10", "easyocr>=1.7", "ultralytics>=8.2"]
-serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "pymongo>=4.8", "google-genai>=0.3", "groq>=0.11"]
+serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "pymongo>=4.8", "google-genai>=0.3", "groq>=0.11"]
 track = ["wandb>=0.17"]
 dev = ["pytest>=8.3", "ruff>=0.6"]
 
