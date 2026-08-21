@@ -1,0 +1,123 @@
+{
+  "config": {
+    "arch": "cross_attention",
+    "datasets": [
+      "hateful_memes"
+    ],
+    "epochs": 30,
+    "batch_size": 128,
+    "lr": 0.0003,
+    "weight_decay": 0.05,
+    "hidden_dim": 256,
+    "dropout": 0.3,
+    "seed": 4,
+    "patience": 8,
+    "normalize_input": true,
+    "task_weights": [
+      1.0,
+      1.0
+    ],
+    "use_class_weights": true,
+    "n_layers": 2,
+    "n_heads": 8,
+    "fusion_dropout": 0.3,
+    "d_model": 256,
+    "warmup_epochs": 3,
+    "grad_clip": 1.0
+  },
+  "best_epoch": 10,
+  "best_val_score": 0.6827003405950774,
+  "train_seconds": 223.98603987693787,
+  "val": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 500,
+      "accuracy": 0.684,
+      "macro_f1": 0.6827003405950774,
+      "weighted_f1": 0.6829440267335004,
+      "auc": 0.7488598358163575,
+      "per_class": {
+        "benign": {
+          "precision": 0.6702508960573477,
+          "recall": 0.7391304347826086,
+          "f1": 0.7030075187969925,
+          "support": 253
+        },
+        "harmful": {
+          "precision": 0.7013574660633484,
+          "recall": 0.6275303643724697,
+          "f1": 0.6623931623931624,
+          "support": 247
+        }
+      },
+      "confusion": [
+        [
+          187,
+          66
+        ],
+        [
+          92,
+          155
+        ]
+      ],
+      "ece": 0.24959584450721742
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  },
+  "test": {
+    "toxicity": {
+      "task": "toxicity",
+      "n": 1000,
+      "accuracy": 0.704,
+      "macro_f1": 0.7029305499799277,
+      "weighted_f1": 0.7032870333199518,
+      "auc": 0.7608323329331733,
+      "per_class": {
+        "benign": {
+          "precision": 0.6945454545454546,
+          "recall": 0.7490196078431373,
+          "f1": 0.720754716981132,
+          "support": 510
+        },
+        "harmful": {
+          "precision": 0.7155555555555555,
+          "recall": 0.6571428571428571,
+          "f1": 0.6851063829787234,
+          "support": 490
+        }
+      },
+      "confusion": [
+        [
+          382,
+          128
+        ],
+        [
+          168,
+          322
+        ]
+      ],
+      "ece": 0.2354228444695473
+    },
+    "misinformation": {
+      "task": "misinformation",
+      "n": 0,
+      "accuracy": 0.0,
+      "macro_f1": 0.0,
+      "weighted_f1": 0.0,
+      "auc": null,
+      "per_class": {},
+      "confusion": [],
+      "ece": null
+    }
+  }
+}
