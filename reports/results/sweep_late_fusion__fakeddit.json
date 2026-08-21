@@ -1,0 +1,218 @@
+[
+  {
+    "hidden_dim": 512,
+    "lr": 0.003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7814686245829076,
+    "best_epoch": 17,
+    "seconds": 6.9
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.0003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7810574883559335,
+    "best_epoch": 3,
+    "seconds": 4.6
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.0003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7759059196001871,
+    "best_epoch": 3,
+    "seconds": 4.7
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.0003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7753740082398912,
+    "best_epoch": 8,
+    "seconds": 2.6
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7740564530178085,
+    "best_epoch": 5,
+    "seconds": 5.5
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.001,
+    "dropout": 0.1,
+    "val_macro_f1": 0.773844590208781,
+    "best_epoch": 10,
+    "seconds": 5.1
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.001,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7731414324049949,
+    "best_epoch": 3,
+    "seconds": 2.4
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.001,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7719615187354263,
+    "best_epoch": 11,
+    "seconds": 5.4
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7713069388791242,
+    "best_epoch": 19,
+    "seconds": 5.4
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7703692251850159,
+    "best_epoch": 10,
+    "seconds": 5.2
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.770097479447119,
+    "best_epoch": 24,
+    "seconds": 12.0
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.0003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7690834543613138,
+    "best_epoch": 3,
+    "seconds": 4.7
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.0003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.76902965842987,
+    "best_epoch": 3,
+    "seconds": 2.9
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.0003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7671235009184271,
+    "best_epoch": 8,
+    "seconds": 4.7
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7664888976000257,
+    "best_epoch": 1,
+    "seconds": 2.8
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.001,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7661333392291922,
+    "best_epoch": 1,
+    "seconds": 1.5
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.001,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7657700720565245,
+    "best_epoch": 1,
+    "seconds": 1.9
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.001,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7656479186095574,
+    "best_epoch": 11,
+    "seconds": 5.4
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.001,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7654159071132907,
+    "best_epoch": 2,
+    "seconds": 4.3
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7647644732735154,
+    "best_epoch": 3,
+    "seconds": 2.3
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.0003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7643550810226114,
+    "best_epoch": 3,
+    "seconds": 2.3
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.003,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7634022257743478,
+    "best_epoch": 5,
+    "seconds": 2.8
+  },
+  {
+    "hidden_dim": 256,
+    "lr": 0.001,
+    "dropout": 0.1,
+    "val_macro_f1": 0.7621739644581523,
+    "best_epoch": 11,
+    "seconds": 4.6
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.0003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7620687778580516,
+    "best_epoch": 7,
+    "seconds": 2.3
+  },
+  {
+    "hidden_dim": 512,
+    "lr": 0.0003,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7615402186933754,
+    "best_epoch": 4,
+    "seconds": 3.7
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.001,
+    "dropout": 0.3,
+    "val_macro_f1": 0.7572017572864915,
+    "best_epoch": 1,
+    "seconds": 2.0
+  },
+  {
+    "hidden_dim": 128,
+    "lr": 0.003,
+    "dropout": 0.5,
+    "val_macro_f1": 0.7570462473304594,
+    "best_epoch": 1,
+    "seconds": 3.8
+  }
+]
