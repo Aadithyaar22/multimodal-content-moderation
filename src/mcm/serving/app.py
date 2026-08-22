@@ -27,6 +27,7 @@ from fastapi.responses import JSONResponse, Response
 from PIL import Image
 
 from mcm import __version__
+from mcm.serving import attributions as attributions_mod
 from mcm.serving import explain as explain_mod
 from mcm.serving.inference import (
     THRESHOLD,
@@ -304,15 +305,25 @@ def get_attributions(item_id: str) -> Attributions:
     record = _store.get(item_id)
     if not record:
         raise HTTPException(404, "item not found")
-    # SHAP, Grad-CAM and attention extraction are step 6. The endpoint exists
-    # and returns a well-formed empty payload so the UI renders its "no
-    # attribution" state rather than erroring.
-    return Attributions(
-        item_id=item_id,
-        text=None,
-        image=None,
-        cross_attention={"available": False, "top_links": []},
-    )
+
+    cached = record.get("attributions")
+    if cached:
+        return Attributions(**cached)
+
+    bundle = _bundle()
+    image = None
+    raw = _images.get(item_id)
+    if raw is not None:
+        try:
+            image = Image.open(io.BytesIO(raw)).convert("RGB")
+        except Exception:  # noqa: BLE001
+            image = None
+
+    payload = attributions_mod.compute(bundle, record, image=image)
+    # Cached because occlusion costs one forward pass per token; a moderator
+    # reopening an item should not pay for it twice.
+    _store.update(item_id, {"attributions": payload})
+    return Attributions(**payload)
 
 
 @app.post("/api/v1/items/{item_id}/decision", response_model=DecisionResponse)
