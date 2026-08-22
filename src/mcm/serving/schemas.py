@@ -122,6 +122,9 @@ class ImageAttributions(BaseModel):
     method: str
     heatmap_url: str
     regions: list[ImageRegion]
+    #: Raw NxN Grad-CAM map, normalized to [0, 1]. Sent alongside the boxes so a
+    #: client can render the continuous heatmap rather than only the regions.
+    grid: list[list[float]] | None = None
 
 
 class CrossAttentionLink(BaseModel):

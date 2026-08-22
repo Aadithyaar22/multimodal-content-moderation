@@ -60,26 +60,52 @@ class CrossAttentionBlock(nn.Module):
         image: torch.Tensor,  # (B, N_img, D)
         text: torch.Tensor,  # (B, N_txt, D)
         text_padding_mask: torch.Tensor | None = None,  # (B, N_txt) True where pad
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return_attention: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, dict]:
+        """Returns the updated streams, and optionally the attention weights.
+
+        The weights are the explainability layer's ground truth for what the
+        model related: text_to_image[i, j] is how much text token i attended to
+        image patch j. Averaging over heads is requested rather than the default
+        per-head split, because a moderator needs one map per token pair, not
+        eight competing ones.
+        """
         # Both directions read the *same* normalized inputs, so neither stream
         # gets to see the other's update within this layer.
         img_n = self.image_norm_attn(image)
         txt_n = self.text_norm_attn(text)
 
-        img_attended, _ = self.image_attn(
-            query=img_n, key=txt_n, value=txt_n, key_padding_mask=text_padding_mask
+        img_attended, img_weights = self.image_attn(
+            query=img_n,
+            key=txt_n,
+            value=txt_n,
+            key_padding_mask=text_padding_mask,
+            need_weights=return_attention,
+            average_attn_weights=True,
         )
         # Image keys are never padded — every image contributes all 50 patches —
         # so no key_padding_mask here. Rows that have no image at all are handled
         # by the caller, not by masking every key, which would make the softmax
         # denominator zero and produce NaN.
-        txt_attended, _ = self.text_attn(query=txt_n, key=img_n, value=img_n)
+        txt_attended, txt_weights = self.text_attn(
+            query=txt_n,
+            key=img_n,
+            value=img_n,
+            need_weights=return_attention,
+            average_attn_weights=True,
+        )
 
         image = image + self.dropout(img_attended)
         text = text + self.dropout(txt_attended)
 
         image = image + self.dropout(self.image_ffn(self.image_norm_ffn(image)))
         text = text + self.dropout(self.text_ffn(self.text_norm_ffn(text)))
+
+        if return_attention:
+            return image, text, {
+                "image_to_text": img_weights,  # (B, N_img, N_txt)
+                "text_to_image": txt_weights,  # (B, N_txt, N_img)
+            }
         return image, text
 
 
@@ -140,7 +166,8 @@ class CrossAttentionFusion(nn.Module):
         text_tokens: torch.Tensor,  # (B, 77, 512)
         text_attention_mask: torch.Tensor | None = None,  # (B, 77) 1 = real token
         image_mask: torch.Tensor | None = None,  # (B,) False = no image at all
-    ) -> HeadOutput:
+        return_attention: bool = False,
+    ) -> HeadOutput | tuple[HeadOutput, list[dict]]:
         image = self.image_proj(image_tokens)
         text = self.text_proj(text_tokens)
 
@@ -160,8 +187,15 @@ class CrossAttentionFusion(nn.Module):
                 text_padding_mask[fully_masked, 0] = False
 
         text_before = text
+        attentions: list[dict] = []
         for block in self.blocks:
-            image, text = block(image, text, text_padding_mask=text_padding_mask)
+            if return_attention:
+                image, text, weights = block(
+                    image, text, text_padding_mask=text_padding_mask, return_attention=True
+                )
+                attentions.append(weights)
+            else:
+                image, text = block(image, text, text_padding_mask=text_padding_mask)
 
         if image_mask is not None:
             # A text-only row has no image to attend to, so whatever the text
@@ -178,7 +212,8 @@ class CrossAttentionFusion(nn.Module):
             image_pooled = image_pooled * image_mask.unsqueeze(-1).to(image_pooled.dtype)
 
         fused = self.fuse(torch.cat([image_pooled, text_pooled], dim=-1))
-        return self.head(fused)
+        out = self.head(fused)
+        return (out, attentions) if return_attention else out
 
     def trainable_parameters(self) -> int:
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
