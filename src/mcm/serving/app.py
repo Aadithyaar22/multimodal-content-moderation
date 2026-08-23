@@ -21,12 +21,14 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated
 
+import torch
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from PIL import Image
 
 from mcm import __version__
+from mcm.models.deepfake import combine_verdict
 from mcm.serving import attributions as attributions_mod
 from mcm.serving import explain as explain_mod
 from mcm.serving.inference import (
@@ -94,6 +96,28 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+def _run_deepfake(bundle: ModelBundle, pil):
+    """Run the manipulation check, degrading to not-checked on any failure.
+
+    The branch is auxiliary: a verdict without it is still complete, so an error
+    here must never fail the request.
+    """
+    from mcm.models.deepfake import DeepfakeResult
+
+    if bundle.deepfake is None:
+        return DeepfakeResult(False, 0.0, "not_checked", reason="detector not loaded")
+    if pil is None:
+        return DeepfakeResult(False, 0.0, "not_checked", reason="no image supplied")
+    try:
+        with torch.no_grad():
+            px = bundle.clip.preprocess_images([pil]).to(bundle.device)
+            emb = bundle.clip.encode_pooled(pixel_values=px).image_emb
+        return bundle.deepfake.check(pil, emb)
+    except Exception:  # noqa: BLE001
+        log.exception("deepfake check failed")
+        return DeepfakeResult(False, 0.0, "not_checked", reason="detector error")
 
 
 def _bundle() -> ModelBundle:
@@ -186,11 +210,18 @@ async def analyze(
         for k, v in task_timings.items():
             timings[k] = timings.get(k, 0) + v
 
+    # Manipulation check. Outside the cross-attention block by design: it
+    # reasons about pixel artefacts, which caption text says nothing about.
+    deepfake = _run_deepfake(bundle, pil)
+
     # The reported verdict follows whichever head scored highest; that is the
     # reason the item is in the queue at all.
     lead_task = max(per_task, key=lambda t: per_task[t].fusion)
     lead = per_task[lead_task]
-    label, action = verdict_for(lead.fusion)
+
+    # Score-level combination, the only place the branch touches the verdict.
+    combined, manipulated = combine_verdict(lead.fusion, deepfake)
+    label, action = verdict_for(combined)
 
     # Emergence is only meaningful when both modalities were actually present.
     # With one missing there is no "neither alone" to establish, and the absent
@@ -210,7 +241,7 @@ async def analyze(
         "source": source,
         "top_head": lead_task,
         "is_emergent": is_emergent,
-        "priority_score": round(priority_score(lead.fusion, is_emergent), 4),
+        "priority_score": round(priority_score(combined, is_emergent), 4),
         "input": {
             "text": text or "",
             "has_image": pil is not None,
@@ -220,8 +251,8 @@ async def analyze(
         },
         "verdict": {
             "label": label,
-            "confidence": round(lead.fusion, 4),
-            "priority_score": round(priority_score(lead.fusion, is_emergent), 4),
+            "confidence": round(combined, 4),
+            "priority_score": round(priority_score(combined, is_emergent), 4),
             "recommended_action": action,
             "auto_action": None,
         },
@@ -242,8 +273,8 @@ async def analyze(
                 )
             ),
         },
-        # Step 5 of the build order; declared here so the contract is stable.
-        "deepfake": {"checked": False, "score": 0.0, "label": "not_checked"},
+        "deepfake": deepfake.to_dict(),
+        "manipulation_flagged": manipulated,
         "explanation_status": "pending",
         "latency_ms": timings,
         "explanation": None,
@@ -437,7 +468,11 @@ def model_card() -> ModelCard:
             "that benchmark's text often carrying the label alone.",
             "Trained on 8,500 Hateful Memes examples; small for a transformer "
             "trained from scratch.",
-            "Deepfake detection and attribution extraction are not yet wired.",
+            "The deepfake branch uses a ViT classifier, not the planned Xception "
+            "on FaceForensics++, which is EULA-gated with no public checkpoint. "
+            "It detects facial manipulation only, and is skipped with a stated "
+            "reason when no face is present rather than scoring regardless.",
+            "Token attribution is leave-one-out occlusion, not Shapley values.",
             "Decision support only. No endpoint removes content.",
         ],
     )
