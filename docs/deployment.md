@@ -41,6 +41,19 @@ Expect `{"status":"ok","models_loaded":true,...}`. The first call after idle
 takes 30–50s while the instance wakes; that is the free tier, and the frontend
 shows an explicit warming state for it rather than appearing to hang.
 
+### Memory on the free plan
+
+Measured in the built image: **690MB resident with the deepfake branch loaded,
+473MB without**, against Render's free-tier limit of **512MB**. `render.yaml`
+therefore ships with `MCM_DISABLE_DEEPFAKE=1`. The branch is auxiliary — turning
+it off costs a `not_checked` field, not any part of the verdict.
+
+473MB is still 92% of the limit. If the service is OOM-killed under load, moving
+to Render Starter (2GB, $7/mo) is the fix and re-enables the full feature set;
+further trimming would mean giving up something the verdict depends on.
+
+Image is 4.45GB, which is fine but makes the first deploy slow.
+
 ### Optional environment variables
 
 | Variable | Effect if absent |

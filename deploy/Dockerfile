@@ -40,6 +40,13 @@ COPY --chown=user:user README.md ./
 
 RUN pip install --no-cache-dir --no-deps -e .
 
+# WORKDIR creates directories as root, and COPY --chown only covers what it
+# copies. Without this the unprivileged user cannot create the checkpoint
+# directory or write the model cache, and both downloads below fail on a
+# permission error that reads as a missing file.
+RUN mkdir -p /home/user/app/checkpoints /home/user/.cache/huggingface /home/user/.cache/torch \
+    && chown -R user:user /home/user
+
 USER user
 
 # Trained heads are pulled from the Hub, not copied from the build context.

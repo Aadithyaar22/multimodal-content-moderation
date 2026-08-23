@@ -17,6 +17,16 @@ services:
     region: singapore
     healthCheckPath: /api/v1/health
     envVars:
+      # Measured: 690MB resident with the deepfake branch loaded, 473MB without,
+      # against a 512MB limit on the free plan. The branch is therefore off by
+      # default here — it is auxiliary, and its absence costs a "not_checked"
+      # field rather than any part of the verdict. Set to "0" on a paid plan
+      # (Starter is 2GB) to enable it.
+      #
+      # Even at 473MB this is 92% of the limit. If the service is OOM-killed
+      # under load, the plan is the fix, not further trimming.
+      - key: MCM_DISABLE_DEEPFAKE
+        value: "1"
       # Set to the deployed frontend origin. Without it CORS blocks the browser.
       - key: MCM_ALLOWED_ORIGINS
         sync: false
