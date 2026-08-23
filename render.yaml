@@ -1,0 +1,35 @@
+# One-click backend deploy: https://render.com/deploy
+#
+# Render rather than HuggingFace Spaces because Spaces now requires a PRO
+# subscription for Docker SDK; only static Spaces remain on the free tier.
+#
+# The free instance sleeps after inactivity and takes 30-50s to wake. That is
+# why /health is cheap and unauthenticated and why the frontend polls it — a
+# cold start surfaces as an explicit warming state rather than a hung request.
+
+services:
+  - type: web
+    name: vanguard-moderation-api
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /api/v1/health
+    envVars:
+      # Set to the deployed frontend origin. Without it CORS blocks the browser.
+      - key: MCM_ALLOWED_ORIGINS
+        sync: false
+      # Vercel gives each preview deployment its own subdomain, so previews are
+      # matched by pattern rather than enumerated.
+      - key: MCM_ALLOWED_ORIGIN_REGEX
+        value: https://.*\.vercel\.app
+      # Optional. Absent, the LLM narrative reports "unavailable" and the
+      # verdict is unaffected.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Optional. Absent, moderation records live in a bounded in-memory store.
+      - key: MONGODB_URI
+        sync: false

@@ -15,6 +15,7 @@ always null, so the contract itself states that nothing acts autonomously.
 from __future__ import annotations
 
 import io
+import os
 import threading
 import time
 import uuid
@@ -88,10 +89,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Origins come from the environment in production. The default covers local dev
+# only, so a deployment that forgets to set this fails visibly in the browser
+# rather than silently accepting requests from anywhere.
+_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "MCM_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001"
+    ).split(",")
+    if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    # Set MCM_ALLOWED_ORIGINS in production. The default covers local dev only.
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=_ALLOWED_ORIGINS,
+    # Vercel preview deployments get a generated subdomain per commit, so the
+    # exact origin cannot be enumerated ahead of time.
+    allow_origin_regex=os.getenv("MCM_ALLOWED_ORIGIN_REGEX") or None,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
