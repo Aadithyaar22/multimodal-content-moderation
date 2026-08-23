@@ -18,9 +18,10 @@ substitutions:
   _SERVICE: vanguard-moderation-api
   _REPO: vanguard
 
-images:
-  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
-  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest
+# Deliberately no top-level `images:` block. Those are pushed only after every
+# step completes, so the deploy step would look for a tag that does not exist
+# yet and fail with "image not found". The push is an explicit step instead,
+# ordered before the deploy.
 
 steps:
   - id: build
@@ -34,6 +35,13 @@ steps:
       - -t
       - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest
       - .
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}
 
   - id: deploy
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
