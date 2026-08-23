@@ -1,0 +1,18 @@
+# Serving dependencies only. The training stack (datasets, scikit-learn, scipy,
+# wandb) is deliberately absent: it is never imported at request time and would
+# add hundreds of MB to an image that cold-starts on every demo.
+transformers>=4.44,<6
+huggingface-hub>=0.24
+pillow>=10.4
+numpy>=1.26
+pandas>=2.2
+pyarrow>=17.0
+pyyaml>=6.0
+python-dotenv>=1.0
+rich>=13.7
+tqdm>=4.66
+requests>=2.32
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pymongo>=4.8
