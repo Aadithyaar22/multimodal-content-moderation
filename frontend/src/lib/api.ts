@@ -1,9 +1,8 @@
 /**
  * Typed client for the moderation API (docs/api.md).
  *
- * Runs against fixtures when NEXT_PUBLIC_USE_MOCK is set, which is the default
- * in development. That is deliberate: the backend is not deployed yet, and a
- * frontend that cannot be built or demoed until it is would block all UI work.
+ * Talks to the deployed API by default. Set NEXT_PUBLIC_USE_MOCK=true to run
+ * against fixtures instead, which is useful for UI work with no backend up.
  */
 
 import {
@@ -23,8 +22,31 @@ import type {
   Stats,
 } from "./types";
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
-export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+/**
+ * Deployed API, baked in as the default.
+ *
+ * Neither of these is a secret. The browser must know the API origin to call it
+ * at all, so it appears in network traffic no matter how it is stored — keeping
+ * it in a dashboard buys nothing and costs a deployment step that is easy to get
+ * wrong. Marking it "sensitive" there actively breaks the build, because Vercel
+ * then refuses to inline it into client JS and the app silently falls back to
+ * fixtures.
+ *
+ * Real secrets — GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI — live on Cloud Run
+ * and are never sent to the browser.
+ *
+ * Both remain overridable by environment for local development and for anyone
+ * pointing the frontend at their own backend.
+ */
+const DEFAULT_API_BASE =
+  "https://vanguard-moderation-api-2wr445ogxq-el.a.run.app";
+
+const BASE = process.env.NEXT_PUBLIC_API_BASE || DEFAULT_API_BASE;
+
+// Opt *in* to fixtures. Defaulting to mock meant a deployment that forgot the
+// variable looked like it worked while serving invented numbers, which is the
+// worse failure: a broken API is obvious, fabricated data is not.
+export const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 /**
  * Resolve a server-relative path against the API origin.
