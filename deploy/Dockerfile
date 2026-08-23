@@ -35,13 +35,27 @@ COPY deploy/requirements-serve.txt ./requirements-serve.txt
 RUN pip install --no-cache-dir -r requirements-serve.txt
 
 COPY --chown=user:user src/ ./src/
-COPY --chown=user:user checkpoints/ ./checkpoints/
 COPY --chown=user:user pyproject.toml ./
 COPY --chown=user:user README.md ./
 
 RUN pip install --no-cache-dir --no-deps -e .
 
 USER user
+
+# Trained heads are pulled from the Hub, not copied from the build context.
+#
+# They are 69MB of binary artefacts and belong in a model registry rather than a
+# git repository. Copying them assumed they were present in the context, which
+# is true on the machine that trained them and false everywhere else — a fresh
+# clone has no checkpoints/ directory at all, so the build failed on the first
+# host that was not the training machine. Fetching them by name makes the image
+# reproducible from the repository alone.
+ARG CHECKPOINT_REPO=Aadithya1122/vanguard-moderation-checkpoints
+RUN python -c "\
+import os; \
+from huggingface_hub import snapshot_download; \
+p = snapshot_download('${CHECKPOINT_REPO}', local_dir='/home/user/app/checkpoints', allow_patterns=['*.pt','*.json']); \
+print('checkpoints ->', p, sorted(os.listdir(p)))"
 
 # Warm the model cache into the image so a cold start does not wait on the Hub.
 RUN python -c "\
@@ -51,6 +65,15 @@ CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
 AutoModelForImageClassification.from_pretrained('dima806/deepfake_vs_real_image_detection'); \
 AutoImageProcessor.from_pretrained('dima806/deepfake_vs_real_image_detection'); \
 print('model cache warmed')"
+
+# Fail the build if the checkpoints did not land, rather than shipping an image
+# that starts cleanly and then serves nothing.
+RUN python -c "\
+import pathlib, sys; \
+d = pathlib.Path('/home/user/app/checkpoints'); \
+n = len(list(d.glob('*.pt'))); \
+print(f'{n} checkpoints present'); \
+sys.exit(0 if n == 6 else 1)"
 
 # 7860 is the port Spaces routes to.
 EXPOSE 7860

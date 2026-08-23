@@ -17,9 +17,17 @@ itself.
 2. **New Blueprint Instance** → pick `Aadithyaar22/multimodal-content-moderation`.
 3. Render reads `render.yaml` and proposes one Docker web service on the free
    plan. Apply it.
-4. First build takes 10–15 minutes: it installs CPU-only torch and bakes CLIP
-   plus the deepfake weights into the image so cold starts do not wait on the
-   Hub.
+4. First build takes 10–15 minutes: it installs CPU-only torch, pulls the
+   trained heads from
+   [the model repo](https://huggingface.co/Aadithya1122/vanguard-moderation-checkpoints),
+   and bakes CLIP plus the deepfake weights into the image so cold starts do not
+   wait on the Hub.
+
+The trained heads are **not** in this git repository. They are 69MB of binary
+artefacts and live in a HuggingFace model repo instead, which the Dockerfile
+fetches by name. That keeps the image reproducible from the repository alone —
+an earlier version copied them from the build context, which worked only on the
+machine that trained them and failed on any fresh clone.
 
 Copy the resulting URL, e.g. `https://vanguard-moderation-api.onrender.com`.
 

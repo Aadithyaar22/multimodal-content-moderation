@@ -1,0 +1,18 @@
+# Keep the build context small and reproducible. Anything here would either
+# bloat the image or make the build depend on state that only exists on the
+# machine that trained the models.
+.git/
+.venv/
+data/
+checkpoints/
+reports/
+notebooks/
+frontend/
+docs/design-reference/
+tests/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.DS_Store
