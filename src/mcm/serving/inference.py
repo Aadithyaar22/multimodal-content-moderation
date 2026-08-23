@@ -18,6 +18,7 @@ would produce a confident number with nothing behind it.
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -62,6 +63,8 @@ class ModelBundle:
 
     clip: FrozenCLIP
     arms: dict[str, dict[str, torch.nn.Module]] = field(default_factory=dict)
+    #: Optional; the API degrades to checked=False if it fails to load.
+    deepfake: object | None = None
     #: Per-arm temperature from scripts/calibrate.py, applied to logits before
     #: softmax. Defaults to 1.0 for any checkpoint predating calibration.
     temperatures: dict[str, dict[str, float]] = field(default_factory=dict)
@@ -87,6 +90,16 @@ def load_bundle(checkpoint_dir: Path | None = None) -> ModelBundle:
     device = get_device()
     clip = FrozenCLIP(device=device)
     bundle = ModelBundle(clip=clip, device=device, loaded_at=time.time())
+
+    # The deepfake branch is independent of the fusion arms and its absence must
+    # not prevent the rest of the system from serving.
+    if os.getenv("MCM_DISABLE_DEEPFAKE", "").lower() not in ("1", "true", "yes"):
+        try:
+            from mcm.models.deepfake import DeepfakeDetector
+
+            bundle.deepfake = DeepfakeDetector(clip, device=device)
+        except Exception as e:  # noqa: BLE001
+            log.warning("deepfake detector unavailable (%s); continuing without it", e)
 
     for task, dataset in TASK_DATASET.items():
         arms: dict[str, torch.nn.Module] = {}

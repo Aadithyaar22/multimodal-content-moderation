@@ -70,6 +70,10 @@ class DeepfakeResult(BaseModel):
     checked: bool
     score: float
     label: str
+    #: Why the check was skipped, when it was. Stated rather than left implicit,
+    #: so "not checked" is never mistaken for "checked and found authentic".
+    reason: str | None = None
+    face_confidence: float | None = None
 
 
 class AnalysisResult(BaseModel):
