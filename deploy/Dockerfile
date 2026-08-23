@@ -82,9 +82,13 @@ n = len(list(d.glob('*.pt'))); \
 print(f'{n} checkpoints present'); \
 sys.exit(0 if n == 6 else 1)"
 
-# 7860 is the port Spaces routes to.
-EXPOSE 7860
+# Cloud Run injects PORT and routes to whatever it says; a hardcoded port makes
+# the container start cleanly and then fail every health check, because nothing
+# is listening where the platform is looking. The default keeps `docker run`
+# working locally without setting anything.
+ENV PORT=8080
+EXPOSE 8080
 
-# One worker: each would load its own copy of CLIP plus six heads, and the free
-# tier does not have the memory for two.
-CMD ["uvicorn", "mcm.serving.app:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
+# One worker. Each would load its own copy of CLIP plus six heads, which doubles
+# the resident set for no throughput gain on two vCPU.
+CMD ["sh", "-c", "exec uvicorn mcm.serving.app:app --host 0.0.0.0 --port ${PORT} --workers 1"]
