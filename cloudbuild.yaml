@@ -1,0 +1,63 @@
+# Cloud Build → Artifact Registry → Cloud Run.
+#
+# Cloud Run rather than Render because the free Render instance caps at 512MB and
+# this service measures 690MB resident with every branch loaded. Cloud Run allows
+# 2GB, so nothing has to be disabled to fit.
+
+timeout: 2400s
+
+options:
+  # The default machine runs out of memory installing torch and baking the model
+  # cache into the image.
+  machineType: E2_HIGHCPU_8
+  diskSizeGb: 60
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: asia-south1
+  _SERVICE: vanguard-moderation-api
+  _REPO: vanguard
+
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest
+      - .
+
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      # 2GB fits every branch. The measured resident set is 690MB; the headroom
+      # absorbs request-time allocations rather than being spare.
+      - --memory=2Gi
+      - --cpu=2
+      # Scale to zero so an idle service costs nothing, and cap the ceiling so a
+      # traffic spike or a loop cannot run up a bill on a real billing account.
+      - --min-instances=0
+      - --max-instances=3
+      # Model load takes ~14s on CPU; the default 240s startup budget is ample,
+      # but requests during it must not be dropped.
+      - --timeout=120
+      # One in-flight request per instance. Each holds CLIP plus six heads, and
+      # concurrent requests on one instance contend for the same 2 vCPU.
+      - --concurrency=4
+      - --set-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
