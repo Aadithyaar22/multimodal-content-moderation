@@ -22,40 +22,87 @@ explains content for faster review. It does not auto-remove anything.
 | 1. Dataset download + preprocessing | done |
 | 2. Unimodal baselines (CV-only, NLP-only) | done |
 | 3. Late fusion baseline | done |
-| 4. Cross-attention fusion (core contribution) | next |
-| 5. Deepfake branch | not started |
-| 6. Explainability layer (SHAP / Grad-CAM / LLM) | not started |
-| 7. Ablation study + evaluation | not started |
-| 8. FastAPI backend | not started |
-| 9. Frontend | not started |
-| 10. Deployment | not started |
+| 4. Cross-attention fusion (core contribution) | done |
+| 5. Deepfake branch | done — score-level, outside the attention block |
+| 6. Explainability layer (SHAP / Grad-CAM / LLM) | done |
+| 7. Ablation study + evaluation | done |
+| 8. FastAPI backend | done |
+| 9. Frontend | done |
+| 10. Deployment | done — Cloud Run + Vercel |
 
 Full architecture and rationale: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+API contract: [docs/api.md](docs/api.md). Deployment: [docs/deployment.md](docs/deployment.md).
 
-## Results so far
+## Results
 
-Test macro-F1, mean ± sd over 3 seeds. All arms share an identical
-`MultiTaskHead` on a frozen CLIP ViT-B/32 backbone, so differences reflect what
-feeds the head, not head capacity.
+Test macro-F1, mean ± sd across seeds. Every arm shares an identical
+`MultiTaskHead` on a frozen CLIP ViT-B/32 backbone, so a difference reflects
+what feeds the head rather than one arm having a larger classifier. Each arm was
+given its own hyperparameter search, selected on validation only.
 
-| Arm | Hateful Memes | Fakeddit |
-|---|---|---|
-| CV-only | 0.6217 ± 0.0064 | 0.6863 ± 0.0040 |
-| NLP-only | 0.6283 ± 0.0098 | 0.7031 ± 0.0030 |
-| Late fusion | **0.6899** ± 0.0121 | **0.7650** ± 0.0031 |
-| Cross-attention | *pending* | *pending* |
+### Hateful Memes — built so neither modality alone is offensive
 
-Both benchmarks show the same ordering: either modality alone is weak, and
-combining them helps substantially. On Hateful Memes that is by construction —
-the dataset was built so neither modality alone is offensive — so the ~6-point
-unimodal-to-fusion gap is the effect the benchmark exists to produce. The open
-question, and the point of the next stage, is how much of the remaining headroom
-comes from letting the modalities attend to each other rather than merely be
-concatenated.
+| Arm | Seeds | Test macro-F1 | 95% CI | AUC |
+|---|---|---|---|---|
+| CV-only | 3 | 0.6217 ± 0.0064 | [0.606, 0.637] | 0.678 |
+| NLP-only | 3 | 0.6283 ± 0.0098 | [0.604, 0.653] | 0.686 |
+| Late fusion | 5 | 0.6910 ± 0.0074 | [0.682, 0.700] | 0.764 |
+| **Cross-attention** | 7 | **0.7035 ± 0.0120** | [0.692, 0.715] | 0.769 |
+
+Cross-attention − late fusion = **+0.0125**, Welch's t = 2.217, **p = 0.051**.
+
+### Fakeddit — text alone often carries the label
+
+| Arm | Seeds | Test macro-F1 | 95% CI | AUC |
+|---|---|---|---|---|
+| CV-only | 3 | 0.6863 ± 0.0040 | [0.676, 0.696] | 0.883 |
+| NLP-only | 3 | 0.7031 ± 0.0030 | [0.696, 0.711] | 0.875 |
+| **Late fusion** | 5 | **0.7732 ± 0.0085** | [0.763, 0.784] | 0.926 |
+| Cross-attention | 5 | 0.7705 ± 0.0069 | [0.762, 0.779] | 0.914 |
+
+Cross-attention − late fusion = **−0.0027**, Welch's t = −0.553, **p = 0.596**.
+
+### What this shows
+
+Both benchmarks agree on the large effect: either modality alone is weak, and
+using both helps substantially — roughly 7 points on Hateful Memes and 7 on
+Fakeddit. That gap is the project's premise and it is not in doubt.
+
+The two benchmarks disagree on the smaller question of *how* to combine them,
+and the disagreement is the interesting result. Cross-attention edges ahead
+precisely on the dataset Meta engineered so that neither modality alone is
+offensive, and does nothing on the one where a single modality usually suffices.
+A merely larger model would have won on both or neither; winning only where
+cross-modal reasoning is actually required is evidence about the mechanism.
+
+**Neither gap is statistically separable from seed noise** (p = 0.051 and
+p = 0.596), and this is reported as such rather than rounded into a win. At
+8,500 training memes, a 14M-parameter block trained from scratch is
+under-resourced, and the honest reading is that cross-modal attention pays off
+in proportion to how much the task demands it — suggestively on Hateful Memes,
+not at all on Fakeddit.
+
+### Recall on the cases both unimodal arms missed
+
+The figure PROJECT_CONTEXT Sec. 6 names most important: harmful memes where
+*neither* the vision-only nor the language-only arm crosses threshold. Unimodal
+recall on this subset is 0 by construction.
+
+| Arm | Recall on hard cases |
+|---|---|
+| Late fusion | 27.5% ± 4.9% |
+| Cross-attention | 30.9% ± 4.1% |
+
++3.4%, p = 0.266 over 5 seeds. The hard subset averages 111 of 490 positives and
+is itself seed-dependent (106–121), since it is defined by that seed's own
+unimodal arms. A single-seed run of this measure gave −4.6%, in the opposite
+direction — which is why it is reported with an error bar and not from one run.
 
 ```bash
 python scripts/encode_features.py --all
-python scripts/train_baseline.py --all-arms --datasets hateful_memes --seeds 1 2 3
+python scripts/sweep_fusion.py --arch cross_attention --datasets hateful_memes
+python scripts/ablation_table.py --datasets hateful_memes fakeddit
+python scripts/fusion_delta.py --dataset hateful_memes --seeds 1 2 3 4 5
 ```
 
 ## Setup
@@ -152,6 +199,21 @@ their content — only code that fetches it.
 - **HateXplain** is MIT-licensed and contains slurs and hate speech by
   construction, since that is what it annotates.
 
+## Running the stack locally
+
+```bash
+uv pip install -e ".[serve]"
+uvicorn mcm.serving.app:app --reload --port 8000
+```
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
+The frontend runs against fixtures with `NEXT_PUBLIC_USE_MOCK=true` in
+`frontend/.env.local`, so the whole interface is buildable and demoable with no
+backend running.
+
 ## Layout
 
 ```
@@ -160,7 +222,12 @@ src/mcm/config.py        paths, dataset specs
 src/mcm/utils/device.py  MPS/CPU selection (no CUDA anywhere)
 src/mcm/data/schema.py   the canonical record format + validation
 src/mcm/data/prepare/    one normalization pipeline per dataset
-scripts/prepare_data.py  build manifests
+src/mcm/models/          CLIP encoder, heads, baselines, cross-attention fusion
+src/mcm/training/        training loop, metrics, significance testing
+src/mcm/serving/app.py   FastAPI application
+frontend/                Next.js interface
+deploy/                  Dockerfile and serving requirements
+scripts/                 data prep, feature caching, training, sweeps, analysis
 ```
 
 ## Hardware

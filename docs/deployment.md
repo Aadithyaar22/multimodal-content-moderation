@@ -1,146 +1,187 @@
 # Deployment
 
-Everything needed to deploy is committed. Both steps below need an account
-login, which is why they are instructions rather than something already done —
-see "What blocked automation" at the end.
+Backend on **Google Cloud Run**, frontend on **Vercel**.
 
-Total time: about five minutes.
+```
+Vercel (Next.js)  ──REST──▶  Cloud Run (FastAPI + CLIP + trained heads)
+                                   │
+                                   └──▶ Gemini / Groq for the narrative
+```
 
 ---
 
-## 1. Backend → Render
+## Why Cloud Run and not Render
 
-The repo contains a `render.yaml` blueprint, so Render configures the service
-itself.
+PROJECT_CONTEXT Sec. 7 named Render or HF Spaces. Render was tried first and
+does not fit, for a measurable reason.
 
-1. Go to **https://dashboard.render.com/blueprints** and sign in with GitHub.
-2. **New Blueprint Instance** → pick `Aadithyaar22/multimodal-content-moderation`.
-3. Render reads `render.yaml` and proposes one Docker web service on the free
-   plan. Apply it.
-4. First build takes 10–15 minutes: it installs CPU-only torch, pulls the
-   trained heads from
-   [the model repo](https://huggingface.co/Aadithya1122/vanguard-moderation-checkpoints),
-   and bakes CLIP plus the deepfake weights into the image so cold starts do not
-   wait on the Hub.
+The built image is **690MB resident with every branch loaded**, against Render's
+free-tier ceiling of **512MB**. As configured the service would have been
+OOM-killed on its first request. Dropping the deepfake branch brought it to
+473MB and did fit — that was the state at commit `12d2136` — but it meant
+shipping the system with a documented feature switched off.
 
-The trained heads are **not** in this git repository. They are 69MB of binary
-artefacts and live in a HuggingFace model repo instead, which the Dockerfile
-fetches by name. That keeps the image reproducible from the repository alone —
-an earlier version copied them from the build context, which worked only on the
-machine that trained them and failed on any fresh clone.
+Cloud Run allows 2GB on a scale-to-zero service, so nothing has to be disabled.
+The deepfake detector is baked into the image and active in production.
 
-Copy the resulting URL, e.g. `https://vanguard-moderation-api.onrender.com`.
+The cost of the move is a real billing account rather than a free tier, which is
+why `--max-instances` is capped: a traffic spike or a runaway loop cannot run up
+an unbounded bill.
 
-Check it:
+---
+
+## 1. Backend → Cloud Run
+
+One command. `cloudbuild.yaml` builds the image, pushes it to Artifact
+Registry, and deploys the service.
 
 ```bash
-curl https://YOUR-SERVICE.onrender.com/api/v1/health
+gcloud builds submit --config cloudbuild.yaml
 ```
 
-Expect `{"status":"ok","models_loaded":true,...}`. The first call after idle
-takes 30–50s while the instance wakes; that is the free tier, and the frontend
-shows an explicit warming state for it rather than appearing to hang.
+First run needs the APIs and the registry to exist:
 
-### Memory on the free plan
+```bash
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com artifactregistry.googleapis.com
+gcloud artifacts repositories create vanguard --repository-format=docker --location=asia-south1
+```
 
-Measured in the built image: **690MB resident with the deepfake branch loaded,
-473MB without**, against Render's free-tier limit of **512MB**. `render.yaml`
-therefore ships with `MCM_DISABLE_DEEPFAKE=1`. The branch is auxiliary — turning
-it off costs a `not_checked` field, not any part of the verdict.
+Build takes 15–25 minutes. Most of it is installing CPU-only torch and baking
+the model cache into the image, so cold starts do not wait on the Hub.
 
-473MB is still 92% of the limit. If the service is OOM-killed under load, moving
-to Render Starter (2GB, $7/mo) is the fix and re-enables the full feature set;
-further trimming would mean giving up something the verdict depends on.
+### What the settings are for
 
-Image is 4.45GB, which is fine but makes the first deploy slow.
+| Setting | Value | Reason |
+|---|---|---|
+| `--memory` | 2Gi | 690MB resident; the headroom absorbs request-time allocation, it is not spare |
+| `--cpu` | 2 | Model load is ~14s on CPU; two cores keeps first-request latency tolerable |
+| `--min-instances` | 0 | Idle service costs nothing. Accepts a cold start in exchange |
+| `--max-instances` | 3 | Ceiling on spend. This is a real billing account, not a free tier |
+| `--concurrency` | 4 | Each instance holds CLIP plus six heads; more in-flight requests contend for the same 2 vCPU |
+| `--timeout` | 120 | Well above the ~600ms analyse path, with room for the LLM call |
+| `machineType` | E2_HIGHCPU_8 | The default builder runs out of memory installing torch |
+| `diskSizeGb` | 60 | The image plus its layers exceed the default builder disk |
 
-### Optional environment variables
+### Two things that are easy to get wrong
 
-| Variable | Effect if absent |
-|---|---|
-| `MCM_ALLOWED_ORIGINS` | **Set this** to the Vercel URL, or the browser blocks every request |
-| `GROQ_API_KEY` or `GEMINI_API_KEY` | Narrative reports "unavailable"; scores unaffected |
-| `MONGODB_URI` | Records live in a bounded in-memory store, lost on restart |
+**The push is an explicit step.** `cloudbuild.yaml` deliberately has no
+top-level `images:` block. Those push only after every step completes, so the
+deploy step would look for a tag that does not exist yet and fail with "image
+not found". The push is ordered before the deploy instead.
+
+**The container must honour `$PORT`.** Cloud Run injects it and ignores
+`EXPOSE`. The Dockerfile defaults it to 8080 and the start command reads it:
+
+```
+CMD ["sh", "-c", "exec uvicorn mcm.serving.app:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+```
+
+Hardcoding 8000 makes the service fail its health check with no useful log line.
+
+### Trained weights are not in git
+
+The heads are 69MB of binary artefacts and live in a HuggingFace model repo:
+[`Aadithya1122/vanguard-moderation-checkpoints`](https://huggingface.co/Aadithya1122/vanguard-moderation-checkpoints).
+The Dockerfile fetches them by name at build time.
+
+This matters for reproducibility. An earlier revision copied them from the build
+context, which worked only on the machine that trained them and failed on any
+fresh clone.
+
+To publish new weights, push to that repo and rebuild; override the source with
+`--build-arg CHECKPOINT_REPO=...` if needed.
 
 ---
 
 ## 2. Frontend → Vercel
 
-1. Go to **https://vercel.com/new** and sign in with GitHub.
-2. Import `Aadithyaar22/multimodal-content-moderation`.
-3. Set **Root Directory** to `frontend`. Vercel detects Next.js on its own.
-4. Add environment variables:
+```bash
+cd frontend && npx vercel --prod
+```
 
-   ```
-   NEXT_PUBLIC_API_BASE = https://YOUR-SERVICE.onrender.com
-   NEXT_PUBLIC_USE_MOCK = false
-   ```
+Or import the repo at [vercel.com/new](https://vercel.com/new) with root
+directory `frontend`.
 
-5. Deploy.
+Set one environment variable:
 
-Importing from GitHub rather than uploading files is deliberate: every push to
-`main` then redeploys automatically, so the deployed site cannot drift from the
-repo.
+```
+NEXT_PUBLIC_API_BASE=https://vanguard-moderation-api-<hash>-el.a.run.app
+```
 
-### Deploying without a backend
+`NEXT_PUBLIC_*` values are inlined at build time, not read at runtime, so
+changing it requires a redeploy. There is no runtime fallback by design — a
+silent switch to mock data in production would be worse than an obvious failure.
 
-Omit both variables and the frontend runs on its fixtures — a complete,
-self-contained demo including the two worked examples from PROJECT_CONTEXT
-Sec. 1. Useful for showing the interface before the API is up. The nav shows a
-"Mock" badge whenever it is in that mode, so demo data is never mistaken for
-model output.
+### Working without a backend
+
+```
+NEXT_PUBLIC_USE_MOCK=true
+```
+
+Serves the fixtures in `src/lib/mock.ts`, including both worked examples from
+PROJECT_CONTEXT Sec. 1. The whole UI is buildable and demoable with no backend
+running.
 
 ---
 
 ## 3. Close the loop
 
-Set `MCM_ALLOWED_ORIGINS` on Render to the Vercel URL and let it redeploy.
-Without it the API is running and the site is loading, but every request fails
-in the browser with an opaque CORS error.
+CORS is set at deploy time to accept any Vercel deployment:
 
-Preview deployments are already covered: `render.yaml` sets
-`MCM_ALLOWED_ORIGIN_REGEX` to `https://.*\.vercel\.app`, since Vercel gives each
-preview its own generated subdomain that cannot be listed in advance.
-
----
-
-## What blocked automation
-
-Three routes were tried; each needs an account action that cannot be done from
-here.
-
-**HuggingFace Spaces** returns `402 Payment Required`. Spaces now requires a PRO
-subscription for the Docker SDK — only static Spaces remain free. This was the
-first choice in PROJECT_CONTEXT Sec. 7, hence Render instead.
-
-**Vercel** returns `403 Forbidden — you don't have permission to create a
-project` for the connected account.
-
-**Render** has no API credentials configured, and its free tier is dashboard-only
-in practice.
-
-Nothing is missing from the repo; the remaining work is authenticating.
-
----
-
-## Verifying a deployment
-
-```bash
-BASE=https://YOUR-SERVICE.onrender.com
-
-curl -s $BASE/api/v1/health
-
-curl -s -X POST $BASE/api/v1/analyze \
-  -F 'text=Sending them a little gift they will not forget'
-
-curl -s $BASE/api/v1/model-card
+```
+--set-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
 ```
 
-`/model-card` returns the measured ablation including the p-values, so a
-deployment can be checked against the reported numbers rather than trusted.
+The regex form covers preview deployments, whose URLs change per commit. For a
+custom domain, use the explicit list instead:
+
+```bash
+gcloud run services update vanguard-moderation-api --region=asia-south1 \
+  --set-env-vars=MCM_ALLOWED_ORIGINS=https://yourdomain.com
+```
+
+Optional keys, all degrading cleanly when absent:
+
+| Variable | Effect when unset |
+|---|---|
+| `GEMINI_API_KEY` / `GROQ_API_KEY` | Explanations return `status: "unavailable"`; scores and attributions are unaffected |
+| `MONGODB_URI` | Decisions are held in memory and lost on restart |
+
+---
+
+## Verifying
+
+```bash
+curl https://<service-url>/api/v1/health
+```
+
+```json
+{ "status": "ok", "models_loaded": true, "warm": true, "device": "cpu" }
+```
+
+`models_loaded: false` means the container is up but weights are still loading.
+That is a normal cold-start state, not a failure; the frontend polls and shows a
+warming indicator rather than letting the first request look like a hang.
+
+An end-to-end check:
+
+```bash
+curl -X POST https://<service-url>/api/v1/analyze \
+  -F 'text=Sending them a little gift they wont forget' \
+  -F 'image=@some-image.jpg'
+```
+
+Look for `fusion_signal.is_emergent` and the three `modality_scores` — those are
+what the interface is built around.
+
+---
 
 ## Cost
 
-Both free tiers. Render sleeps after 15 minutes idle and wakes in 30–50s. For a
-viva, hit the health endpoint a few minutes beforehand so the first live request
-is warm.
+Cloud Run scales to zero, so an idle service is free and billing is per request.
+At demo traffic this is cents per month. Vercel's hobby tier covers the frontend.
+
+The tradeoff for scale-to-zero is a cold start: roughly 15–20s while the
+container boots and loads the models. `--min-instances=1` removes it and costs
+about $15/month, which is worth setting for a live viva and turning back off
+afterwards.
