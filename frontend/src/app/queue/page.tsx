@@ -19,6 +19,7 @@ import {
   ConfidenceBar,
   EmergentBadge,
   GlassPanel,
+  HeadBadges,
   Skeleton,
   VerdictBadge,
   relativeAge,
@@ -154,6 +155,7 @@ function QueueRow({ item }: { item: QueueItem }) {
             {item.item_id.replace("itm_", "").toUpperCase()}
           </span>
           <VerdictBadge label={item.verdict.label} />
+          <HeadBadges heads={item.active_heads} />
           {item.is_emergent && <EmergentBadge />}
         </div>
         <span className="label-tech text-outline">

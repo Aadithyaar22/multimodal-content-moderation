@@ -19,7 +19,7 @@ import type { ItemDetail } from "@/lib/types";
 import { useAsyncResource } from "@/hooks/useAsyncResource";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
-import { EmergentBadge, GlassPanel, Skeleton, VerdictBadge } from "@/components/ui";
+import { EmergentBadge, GlassPanel, HeadBadges, Skeleton, VerdictBadge } from "@/components/ui";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -235,6 +235,7 @@ export default function AnalyzePage() {
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="display-vanguard text-3xl text-on-surface">Verdict</h2>
             <VerdictBadge label={result.verdict.label} />
+            <HeadBadges heads={result.active_heads} />
             {result.fusion_signal.is_emergent && <EmergentBadge />}
             <Link
               href={`/items/${result.item_id}`}

@@ -63,6 +63,42 @@ export function EmergentBadge() {
   );
 }
 
+const HEAD_LABEL: Record<"toxicity" | "misinformation", string> = {
+  toxicity: "Harassment",
+  misinformation: "Misinformation",
+};
+
+/**
+ * One badge per head that independently cleared threshold — never just
+ * whichever the verdict headline names.
+ *
+ * A 2-way toxicity score and a 3-way misinformation score are not on a
+ * comparable scale, so treating "whichever is higher" as the single thing an
+ * item is about is not sound: a real item scored toxicity=0.76 (correctly
+ * harmful) while misinformation happened to read 0.94, and picking one badge
+ * would have shown only the second, less urgent framing. When both are
+ * active, both render — two reasons to look at an item, not one.
+ */
+export function HeadBadges({
+  heads,
+}: {
+  heads: Array<"toxicity" | "misinformation">;
+}) {
+  if (heads.length === 0) return null;
+  return (
+    <>
+      {heads.map((h) => (
+        <span
+          key={h}
+          className="label-tech rounded border border-outline-variant px-2 py-1 text-outline"
+        >
+          {HEAD_LABEL[h]}
+        </span>
+      ))}
+    </>
+  );
+}
+
 /**
  * Confidence must never look like certainty. The numeral is always shown
  * alongside the bar so 0.51 and 0.97 cannot read the same at a glance.

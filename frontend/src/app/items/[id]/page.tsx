@@ -20,6 +20,7 @@ import { DecisionBar } from "@/components/DecisionBar";
 import {
   EmergentBadge,
   GlassPanel,
+  HeadBadges,
   Skeleton,
   VerdictBadge,
 } from "@/components/ui";
@@ -99,6 +100,7 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
             {item.item_id.replace("itm_", "").toUpperCase()}
           </h1>
           <VerdictBadge label={item.verdict.label} />
+          <HeadBadges heads={item.active_heads} />
           {item.fusion_signal.is_emergent && <EmergentBadge />}
         </div>
         <p className="mt-2 label-tech text-outline">

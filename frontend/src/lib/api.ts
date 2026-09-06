@@ -130,7 +130,12 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueRespons
     await delay(180);
     let items = MOCK_QUEUE_RESPONSE.items;
     if (filters.emergent_only) items = items.filter((i) => i.is_emergent);
-    if (filters.head) items = items.filter((i) => i.top_head === filters.head);
+    // Matches active_heads, not top_head — see docs/api.md's note on
+    // active_heads. Filtering on top_head alone reproduces the exact bug it
+    // fixed: an item whose secondary head is the one being searched for would
+    // silently disappear from this filter, in the mock exactly as it did
+    // against the real backend before the server-side fix.
+    if (filters.head) items = items.filter((i) => i.active_heads.includes(filters.head!));
     if (filters.min_priority != null) {
       items = items.filter((i) => i.verdict.priority_score >= filters.min_priority!);
     }

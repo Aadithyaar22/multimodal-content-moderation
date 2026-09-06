@@ -88,6 +88,11 @@ class AnalysisResult(BaseModel):
     heads: dict[str, HeadScore]
     modality_scores: ModalityScores
     fusion_signal: FusionSignal
+    #: Every head whose own fusion score clears threshold, not just whichever
+    #: one is highest. A queue filter or a moderator's own reading of "which
+    #: kinds of harm apply here" should go by this, not by picking the single
+    #: loudest head — see the note where this is computed in app.py.
+    active_heads: list[str] = Field(default_factory=list)
     deepfake: DeepfakeResult
     explanation_status: ExplanationStatus
     latency_ms: dict[str, int]
@@ -159,6 +164,9 @@ class QueueItem(BaseModel):
     text_preview: str
     verdict: dict
     top_head: str
+    #: Every head this item actually clears threshold on. `head=X` in
+    #: GET /queue matches against this, not against top_head alone.
+    active_heads: list[str] = Field(default_factory=list)
     is_emergent: bool
     status: str
     created_at: str

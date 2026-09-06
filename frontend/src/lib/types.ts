@@ -69,6 +69,15 @@ export interface AnalysisResult {
     misinformation: HeadScore<MisinfoClass>;
   };
   modality_scores: ModalityScores;
+  /**
+   * Every head whose own fusion score clears threshold, not just whichever is
+   * highest. Comparing a 2-way toxicity score against a 3-way misinformation
+   * score to pick a single "lead" is not sound — a real example scored
+   * toxicity=0.76 (correctly harmful) with misinformation reading 0.94, and a
+   * lead-only view would file it as misinformation only. Render every entry
+   * here, not just whichever head the verdict headline names.
+   */
+  active_heads: Array<"toxicity" | "misinformation">;
   fusion_signal: FusionSignal;
   deepfake: { checked: boolean; score: number; label: string };
   explanation_status: ExplanationStatus;
@@ -117,6 +126,8 @@ export interface QueueItem {
   text_preview: string;
   verdict: { label: VerdictLabel; confidence: number; priority_score: number };
   top_head: "toxicity" | "misinformation";
+  /** What `head=` filters against — see AnalysisResult.active_heads. */
+  active_heads: Array<"toxicity" | "misinformation">;
   is_emergent: boolean;
   status: ItemStatus;
   created_at: string;
