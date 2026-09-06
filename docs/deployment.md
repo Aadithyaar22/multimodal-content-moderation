@@ -133,10 +133,21 @@ running.
 
 ## 3. Close the loop
 
+**`--set-env-vars` replaces the service's entire environment; `--update-env-vars`
+merges into it.** Every command below uses the merging form on purpose.
+`cloudbuild.yaml`'s own deploy step made this exact mistake with the plain
+`--set-env-vars` form for months — invisibly, because until `GEMINI_API_KEY` and
+`GEMINI_MODEL` existed as separately-added variables, there was nothing else on
+the service for it to destroy. The first time there was, a routine rebuild
+silently deleted both, with no error and no symptom until the explanation
+endpoint was actually exercised, since `/health` does not depend on that key.
+Treat a CI/CD deploy step as exactly the kind of "user" this warning is for —
+it runs `gcloud` unattended, every time, whether or not you're watching.
+
 CORS is set at deploy time to accept any Vercel deployment:
 
 ```
---set-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
+--update-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
 ```
 
 The regex form covers preview deployments, whose URLs change per commit. For a
@@ -144,7 +155,7 @@ custom domain, use the explicit list instead:
 
 ```bash
 gcloud run services update vanguard-moderation-api --region=asia-south1 \
-  --set-env-vars=MCM_ALLOWED_ORIGINS=https://yourdomain.com
+  --update-env-vars=MCM_ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
 Optional keys, all degrading cleanly when absent:
@@ -153,6 +164,13 @@ Optional keys, all degrading cleanly when absent:
 |---|---|
 | `GEMINI_API_KEY` / `GROQ_API_KEY` | Explanations return `status: "unavailable"`; scores and attributions are unaffected |
 | `MONGODB_URI` | Decisions are held in memory and lost on restart |
+
+Set any of these with the same merging flag:
+
+```bash
+gcloud run services update vanguard-moderation-api --region=asia-south1 \
+  --update-env-vars=GEMINI_API_KEY=your-key-here
+```
 
 If an explanation returns `"unavailable"` with a key set and the deployed image
 predates this note, check that `deploy/requirements-serve.txt` actually installs

@@ -78,4 +78,16 @@ steps:
       # One in-flight request per instance. Each holds CLIP plus six heads, and
       # concurrent requests on one instance contend for the same 2 vCPU.
       - --concurrency=4
-      - --set-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
+      # --update-env-vars merges; --set-env-vars replaces the service's entire
+      # environment. Every rebuild through this file used --set-env-vars here
+      # for months, and it worked only by accident, because until this session
+      # nothing else had ever been added to the service's environment. The
+      # first time GEMINI_API_KEY and GEMINI_MODEL existed as manually-added
+      # vars, a routine rebuild through this exact step silently deleted both
+      # — with no error, and no symptom until the explanation endpoint was
+      # actually exercised, because /health does not depend on that key. This
+      # is the same replace-vs-merge mistake as giving a user a --set-env-vars
+      # command for a service that already has vars worth keeping; it is worth
+      # remembering that a CI/CD deploy step is exactly such a user, every time
+      # it runs.
+      - --update-env-vars=MCM_ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app
