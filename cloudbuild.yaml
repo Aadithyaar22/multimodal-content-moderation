@@ -17,6 +17,16 @@ substitutions:
   _REGION: asia-south1
   _SERVICE: vanguard-moderation-api
   _REPO: vanguard
+  # SHORT_SHA (no underscore) is a *built-in* substitution that Cloud Build only
+  # auto-populates for a trigger reading from a connected repo. A plain
+  # `gcloud builds submit --config cloudbuild.yaml .` from local source — the
+  # documented, and so far only, way this has been deployed — leaves it empty,
+  # which produced a tag ending in a bare colon and failed docker's own argument
+  # parsing before any build step ran. A user-defined substitution with a
+  # default makes the documented one-liner work unmodified, while still letting
+  # a real commit SHA be threaded through via
+  # --substitutions=_SHORT_SHA=$(git rev-parse --short HEAD).
+  _SHORT_SHA: manual
 
 # Deliberately no top-level `images:` block. Those are pushed only after every
 # step completes, so the deploy step would look for a tag that does not exist
@@ -31,7 +41,7 @@ steps:
       - -f
       - deploy/Dockerfile
       - -t
-      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${_SHORT_SHA}
       - -t
       - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest
       - .
@@ -50,7 +60,7 @@ steps:
       - run
       - deploy
       - ${_SERVICE}
-      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${_SHORT_SHA}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated

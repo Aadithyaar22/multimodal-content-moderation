@@ -36,8 +36,15 @@ One command. `cloudbuild.yaml` builds the image, pushes it to Artifact
 Registry, and deploys the service.
 
 ```bash
-gcloud builds submit --config cloudbuild.yaml
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_SHORT_SHA=$(git rev-parse --short HEAD)
 ```
+
+The substitution is what tags the image with the commit it was built from,
+which matters when tracing a bug back to a deploy. It is optional — omitting it
+falls back to the tag `manual` — but the plain form is only there so the
+command still runs at all outside a git checkout; always pass it when you have
+one.
 
 First run needs the APIs and the registry to exist:
 
