@@ -117,12 +117,19 @@ def _try_gemini(prompt: str, timeout: float) -> tuple[str, str] | None:
     client = genai.Client(
         api_key=key, http_options=types.HttpOptions(timeout=int(timeout * 1000))
     )
-    # gemini-2.5-pro was retired for new API keys — verified live against the
-    # deployed service on 2026-09-06, where it returned 404 NOT_FOUND with a
-    # message naming this model as the direct replacement. Model names on a
-    # hosted API are not a fact this codebase controls; if this goes stale
-    # again the same 404 body will name the current one.
-    model = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
+    # gemini-2.5-pro was retired for new API keys (see git history for the 404
+    # that caught it). gemini-3.1-pro-preview was its confirmed replacement but
+    # measured ~16s per explanation in production — well past this endpoint's
+    # own "compute first, explain second" design intent, even though it stays
+    # inside the 20s internal timeout. gemini-2.5-flash, checked live against
+    # the same deployed service and the same prompt on 2026-09-06, is roughly
+    # half the latency (~7-8s) with narrative quality that reads equally clear,
+    # accurate and appropriately hedged on every case tried — a small, fixed
+    # explanation-of-computed-scores task, not open-ended reasoning, so this is
+    # exactly the kind of call a faster/cheaper tier should be adequate for.
+    # gemini-3.1-flash does not exist under this name; do not reintroduce it
+    # without checking the API's own error body for the current name first.
+    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     resp = client.models.generate_content(
         model=model,
         contents=f"{SYSTEM_PROMPT}\n\n{prompt}",

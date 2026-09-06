@@ -15,7 +15,8 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { analyze, getAttributions, getExplanation } from "@/lib/api";
-import type { Attributions, Explanation, ItemDetail } from "@/lib/types";
+import type { ItemDetail } from "@/lib/types";
+import { useAsyncResource } from "@/hooks/useAsyncResource";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
 import { EmergentBadge, GlassPanel, Skeleton, VerdictBadge } from "@/components/ui";
@@ -30,10 +31,16 @@ export default function AnalyzePage() {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ItemDetail | null>(null);
-  const [explanation, setExplanation] = useState<Explanation | null>(null);
-  const [attributions, setAttributions] = useState<Attributions | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Keyed on the result's item_id, so a fresh analysis automatically refetches
+  // both — and a failed fetch surfaces as retryable rather than looking
+  // identical to "still generating" forever. See useAsyncResource's note.
+  const explanationState = useAsyncResource(result?.item_id ?? null, getExplanation);
+  const attributionsState = useAsyncResource(result?.item_id ?? null, getAttributions);
+  const explanation = explanationState.phase === "done" ? explanationState.data : null;
+  const attributions = attributionsState.phase === "done" ? attributionsState.data : null;
 
   const accept = useCallback((f: File | undefined) => {
     if (!f) return;
@@ -60,8 +67,6 @@ export default function AnalyzePage() {
     setBusy(true);
     setError(null);
     setResult(null);
-    setExplanation(null);
-    setAttributions(null);
 
     const form = new FormData();
     if (file) form.append("image", file);
@@ -70,15 +75,10 @@ export default function AnalyzePage() {
 
     try {
       const item = await analyze(form);
+      // Setting result changes explanationState/attributionsState's key, which
+      // fires their own fetches. The verdict below is on screen the instant
+      // this resolves; the slower calls must never gate it.
       setResult(item);
-      // Second, slower call. The verdict is already on screen by the time this
-      // resolves; it must never gate the scores.
-      getExplanation(item.item_id)
-        .then(setExplanation)
-        .catch(() => setExplanation(null));
-      getAttributions(item.item_id)
-        .then(setAttributions)
-        .catch(() => setAttributions(null));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -259,13 +259,26 @@ export default function AnalyzePage() {
           )}
 
           <GlassPanel title="Model reasoning">
-            {explanation === null ? (
+            {explanationState.phase === "loading" ? (
               <div className="space-y-3">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-10/12" />
                 <p className="label-tech pt-2 text-outline">Generating…</p>
               </div>
-            ) : explanation.status === "ready" && explanation.narrative ? (
+            ) : explanationState.phase === "error" ? (
+              <div className="space-y-3">
+                <p className="text-sm text-on-surface-variant">
+                  Could not load the explanation ({explanationState.message}).
+                  The scores above are unaffected.
+                </p>
+                <button
+                  onClick={explanationState.retry}
+                  className="label-tech rounded border border-outline-variant px-3 py-2 text-on-surface hover:border-outline"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : explanation && explanation.status === "ready" && explanation.narrative ? (
               <p className="font-editorial text-lg leading-relaxed text-on-surface">
                 {explanation.narrative}
               </p>

@@ -16,12 +16,16 @@ explanation; a person makes the call and that decision is logged.
 ## Design decisions the frontend depends on
 
 **Compute first, explain second.** `POST /analyze` returns model scores in
-roughly 300–800ms. The LLM narrative lives behind a separate call and is
-markedly slower than originally estimated — measured at ~16s against
-`gemini-3.1-pro-preview` in production, not the 2–5s an earlier draft of this
-doc assumed. Do not block the verdict UI on the explanation under any
-estimate: render scores immediately, then fill the narrative in whenever it
-lands. This mirrors the CivicPulse pattern.
+roughly 300–800ms. The LLM narrative lives behind a separate call and takes
+longer than an early draft of this doc assumed: `gemini-3.1-pro-preview`
+measured ~16s in production; the deployed default, `gemini-2.5-flash`, measured
+~7–8s on the same prompts with no perceptible quality loss on the cases tried.
+Neither is the 2–5s originally estimated. Do not block the verdict UI on the
+explanation under any estimate — render scores immediately, then fill the
+narrative in whenever it lands, and treat "the fetch failed" as a distinct,
+retryable state from "still generating" rather than the same one (a client that
+conflates them shows an infinite spinner in front of an answer that may already
+be sitting in the response cache). This mirrors the CivicPulse pattern.
 
 **Cold starts are real.** Cloud Run scales to zero between demos and takes
 15–20s to wake. `GET /health` is cheap and unauthenticated; call it on app mount
@@ -161,7 +165,7 @@ The slow half. Call immediately after `/analyze` returns.
     { "modality": "image", "factor": "covert approach to residence", "weight": 0.29 },
     { "modality": "cross", "factor": "tone/action mismatch", "weight": 0.37 }
   ],
-  "model": "gemini-3.1-pro-preview",
+  "model": "gemini-2.5-flash",
   "generated_at": "2026-08-21T09:14:26Z",
   "latency_ms": 3120
 }
