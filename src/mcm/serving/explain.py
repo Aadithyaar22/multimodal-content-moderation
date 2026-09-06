@@ -117,7 +117,12 @@ def _try_gemini(prompt: str, timeout: float) -> tuple[str, str] | None:
     client = genai.Client(
         api_key=key, http_options=types.HttpOptions(timeout=int(timeout * 1000))
     )
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+    # gemini-2.5-pro was retired for new API keys — verified live against the
+    # deployed service on 2026-09-06, where it returned 404 NOT_FOUND with a
+    # message naming this model as the direct replacement. Model names on a
+    # hosted API are not a fact this codebase controls; if this goes stale
+    # again the same 404 body will name the current one.
+    model = os.getenv("GEMINI_MODEL", "gemini-3.1-pro-preview")
     resp = client.models.generate_content(
         model=model,
         contents=f"{SYSTEM_PROMPT}\n\n{prompt}",
