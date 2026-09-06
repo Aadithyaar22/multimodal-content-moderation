@@ -147,6 +147,21 @@ Optional keys, all degrading cleanly when absent:
 | `GEMINI_API_KEY` / `GROQ_API_KEY` | Explanations return `status: "unavailable"`; scores and attributions are unaffected |
 | `MONGODB_URI` | Decisions are held in memory and lost on restart |
 
+If an explanation returns `"unavailable"` with a key set and the deployed image
+predates this note, check that `deploy/requirements-serve.txt` actually installs
+`google-genai` and `groq` — the Dockerfile builds with `pip install --no-deps -e .`,
+so `pyproject.toml`'s own `[serve]` extra, which lists both, is never read at
+build time. Both packages missing was the state of every build before this was
+caught: the endpoint always returned `"unavailable"` regardless of whether a key
+was configured, because the import itself failed and was swallowed by the same
+per-backend `except Exception` that is meant to catch an unset key.
+
+`/analyze` is rate-limited per client to 20 requests/minute — it is the only
+endpoint that costs a CLIP forward pass and, once an explanation is requested,
+a paid LLM call. The limit is in-process (`mcm/serving/ratelimit.py`), so it
+resets per instance and under-counts once more than one instance is running;
+that is an accepted tradeoff at demo scale, not an oversight.
+
 ---
 
 ## Verifying

@@ -119,6 +119,7 @@ export async function getHealth(): Promise<Health> {
       device: "mock",
       version: "0.1.0-mock",
       loaded_at: new Date().toISOString(),
+      error: null,
     };
   }
   return request<Health>("/health");
@@ -137,7 +138,12 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueRespons
     items = [...items].sort(
       (a, b) => b.verdict.priority_score - a.verdict.priority_score,
     );
-    return { items, next_cursor: null, total_pending: items.length };
+    return {
+      items,
+      next_cursor: null,
+      total_matching: items.length,
+      total_pending: MOCK_QUEUE_RESPONSE.total_pending,
+    };
   }
 
   const params = new URLSearchParams();

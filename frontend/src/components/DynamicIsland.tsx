@@ -28,7 +28,14 @@ const LINKS = [
 type IslandState =
   | { kind: "idle" }
   | { kind: "warming" }
-  | { kind: "message"; text: string };
+  | { kind: "message"; text: string }
+  // Loading finished and failed (backend reports status="error"), or the
+  // health call itself couldn't be reached at all. Both are distinct from a
+  // cold start: they will not resolve by waiting, so the copy and the retry
+  // cadence must not pretend they will.
+  | { kind: "error"; text: string };
+
+const UNREACHABLE_AFTER = 5; // consecutive network failures before giving up
 
 export function DynamicIsland() {
   const pathname = usePathname();
@@ -45,14 +52,26 @@ export function DynamicIsland() {
   useEffect(() => {
     let cancelled = false;
     let poll: ReturnType<typeof setTimeout>;
+    let consecutiveFailures = 0;
 
-    // A cold backend takes 30-50s to wake. The island holds an explicit warming
-    // state for that whole window so the wait never looks like a hang.
+    // A cold backend takes 15-20s to wake. The island holds an explicit warming
+    // state for that whole window so the wait never looks like a hang — but
+    // that is only correct for models_loaded:false. A permanent load failure
+    // (status:"error") or an unreachable host looks identical to a slow cold
+    // start on the same field, so both are checked for explicitly rather than
+    // folded into the same "still warming, keep polling every 2s" branch,
+    // which would otherwise retry forever and never tell the moderator the
+    // wait is never going to end.
     const check = async () => {
       try {
         const h = await getHealth();
         if (cancelled) return;
-        if (h.models_loaded) {
+        consecutiveFailures = 0;
+
+        if (h.status === "error") {
+          setState({ kind: "error", text: h.error ?? "Model failed to load" });
+          poll = setTimeout(check, 15_000); // still worth checking after a redeploy
+        } else if (h.models_loaded) {
           setState({ kind: "idle" });
         } else {
           setState({ kind: "warming" });
@@ -60,8 +79,14 @@ export function DynamicIsland() {
         }
       } catch {
         if (cancelled) return;
-        setState({ kind: "warming" });
-        poll = setTimeout(check, 2000);
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= UNREACHABLE_AFTER) {
+          setState({ kind: "error", text: "Backend unreachable" });
+          poll = setTimeout(check, 15_000);
+        } else {
+          setState({ kind: "warming" });
+          poll = setTimeout(check, 2000);
+        }
       }
     };
     check();
@@ -136,6 +161,20 @@ export function DynamicIsland() {
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
               </span>
               <span className="label-tech text-white/70">Waking models</span>
+            </span>
+          )}
+          {state.kind === "error" && (
+            <span
+              className="flex items-center gap-2 whitespace-nowrap"
+              title={state.text}
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--color-harm)]"
+                aria-hidden
+              />
+              <span className="label-tech text-[var(--color-harm)]">
+                {state.text}
+              </span>
             </span>
           )}
           {state.kind === "message" && (

@@ -22,6 +22,10 @@ class Health(BaseModel):
     device: str
     version: str
     loaded_at: str | None = None
+    #: Set only when status="error", i.e. loading finished and failed. A caller
+    #: (or the frontend's health poll) must be able to tell that apart from
+    #: "still loading" — both otherwise look identical as models_loaded=false.
+    error: str | None = None
 
 
 class HeadScore(BaseModel):
@@ -164,6 +168,12 @@ class QueueItem(BaseModel):
 class QueueResponse(BaseModel):
     items: list[QueueItem]
     next_cursor: str | None = None
+    #: Rows matching this call's own filters — the count `next_cursor` paginates
+    #: over. Not "how many are pending" when the caller filtered on something else.
+    total_matching: int
+    #: Total pending items system-wide, independent of this call's filters.
+    #: A badge reading this must not shrink because the caller narrowed status
+    #: or head — that reads as items disappearing rather than being filtered.
     total_pending: int
 
 
