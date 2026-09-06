@@ -220,6 +220,69 @@ class TestQueueAndDecision:
         assert items[0]["text_preview"] == "high priority"
 
 
+class TestActiveHeads:
+    """End-to-end version of the queue-filter blind spot: a real Hateful Memes
+    example scored toxicity=0.76 (correctly harmful) but top_head came out
+    "misinformation" because that head — a 3-way classifier, not comparable to
+    a 2-way one on raw score alone — happened to read 0.94. A queue filter
+    keyed on top_head made that item invisible under head=toxicity."""
+
+    def test_both_heads_crossing_threshold_are_both_active(self, client, monkeypatch):
+        two_task_bundle = FakeBundle()
+        two_task_bundle.tasks = ["misinformation", "toxicity"]
+        two_task_bundle.arms = {"misinformation": {}, "toxicity": {}}
+        monkeypatch.setitem(app_module._state, "bundle", two_task_bundle)
+
+        def scored(bundle, task, image, text):
+            # Mirrors the real example: toxicity clears threshold but
+            # misinformation reads higher, so misinformation is lead_task.
+            fusion = {"toxicity": 0.76, "misinformation": 0.94}[task]
+            probs = (
+                {"benign": 1 - fusion, "harmful": fusion}
+                if task == "toxicity"
+                else {"true": 1 - fusion, "satire": fusion, "misleading": 0.0}
+            )
+            arms = ArmOutputs(cv_only=fusion, nlp_only=fusion, fusion=fusion, fusion_probs=probs)
+            return arms, {"encode": 1}
+
+        monkeypatch.setattr(app_module, "run_arms", scored)
+
+        body = client.post("/api/v1/analyze", data={"text": "hi"}).json()
+        assert body["heads"]["toxicity"]["label"] == "harmful"
+        assert set(body["active_heads"]) == {"toxicity", "misinformation"}
+
+        # The point of the fix: findable under the head that did NOT win.
+        by_toxicity = client.get("/api/v1/queue", params={"head": "toxicity"}).json()
+        assert body["item_id"] in [i["item_id"] for i in by_toxicity["items"]]
+
+        by_misinfo = client.get("/api/v1/queue", params={"head": "misinformation"}).json()
+        assert body["item_id"] in [i["item_id"] for i in by_misinfo["items"]]
+
+    def test_only_the_crossing_head_is_active(self, client, monkeypatch):
+        two_task_bundle = FakeBundle()
+        two_task_bundle.tasks = ["misinformation", "toxicity"]
+        two_task_bundle.arms = {"misinformation": {}, "toxicity": {}}
+        monkeypatch.setitem(app_module._state, "bundle", two_task_bundle)
+
+        def scored(bundle, task, image, text):
+            fusion = {"toxicity": 0.2, "misinformation": 0.9}[task]
+            probs = (
+                {"benign": 1 - fusion, "harmful": fusion}
+                if task == "toxicity"
+                else {"true": 1 - fusion, "satire": fusion, "misleading": 0.0}
+            )
+            arms = ArmOutputs(cv_only=fusion, nlp_only=fusion, fusion=fusion, fusion_probs=probs)
+            return arms, {"encode": 1}
+
+        monkeypatch.setattr(app_module, "run_arms", scored)
+
+        body = client.post("/api/v1/analyze", data={"text": "hi"}).json()
+        assert body["active_heads"] == ["misinformation"]
+
+        by_toxicity = client.get("/api/v1/queue", params={"head": "toxicity"}).json()
+        assert body["item_id"] not in [i["item_id"] for i in by_toxicity["items"]]
+
+
 class TestRateLimit:
     def test_blocks_after_the_configured_window(self, client, monkeypatch):
         monkeypatch.setattr(ratelimit, "MAX_REQUESTS_PER_WINDOW", 3)

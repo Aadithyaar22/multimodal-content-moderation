@@ -239,6 +239,18 @@ async def analyze(
     lead_task = max(per_task, key=lambda t: per_task[t].fusion)
     lead = per_task[lead_task]
 
+    # Every head whose OWN fusion score clears threshold, independent of which
+    # one happens to be highest. lead_task alone is not enough to file an item
+    # under: comparing a 2-way toxicity score against a 3-way misinformation
+    # score as if they sat on the same scale is not sound, and a real example
+    # caught it directly — a meme scoring toxicity=0.76 (correctly harmful) was
+    # filed under top_head="misinformation" because that head happened to read
+    # 0.94. Filtering /queue on top_head alone would make that item invisible
+    # to a moderator asking for harassment cases specifically. active_heads is
+    # what /queue?head=... actually matches against; top_head remains the
+    # single "most urgent" head for display and priority ordering.
+    active_heads = sorted(t for t in per_task if per_task[t].fusion >= THRESHOLD)
+
     # Score-level combination, the only place the branch touches the verdict.
     combined, manipulated = combine_verdict(lead.fusion, deepfake)
     label, action = verdict_for(combined)
@@ -260,6 +272,7 @@ async def analyze(
         "status": "pending",
         "source": source,
         "top_head": lead_task,
+        "active_heads": active_heads,
         "is_emergent": is_emergent,
         "priority_score": round(priority_score(combined, is_emergent), 4),
         "input": {
@@ -437,6 +450,7 @@ def queue(
                 "text_preview": (r["input"]["text"] or "")[:160],
                 "verdict": r["verdict"],
                 "top_head": r["top_head"],
+                "active_heads": r.get("active_heads", [r["top_head"]]),
                 "is_emergent": r["is_emergent"],
                 "status": r["status"],
                 "created_at": r["created_at"],

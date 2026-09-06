@@ -108,13 +108,24 @@ class Store:
         are pending" (that is ``count_pending``). Conflating the two used to
         surface as ``total_pending: 3`` when a caller asked for
         ``status=resolved`` and got 3 resolved rows back.
+
+        ``head`` matches against ``active_heads`` — every head that
+        independently clears threshold on this item — not ``top_head`` alone.
+        A real example is why: a meme scoring toxicity=0.76 (correctly
+        harmful) had top_head="misinformation" because that head happened to
+        read 0.94, a 3-way score that is not on the same scale as a 2-way
+        one. Filtering on top_head would have made that item invisible to a
+        moderator asking specifically for harassment cases.
         """
         if self._collection is not None:
             q: dict[str, Any] = {}
             if status != "all":
                 q["status"] = status
             if head:
-                q["top_head"] = head
+                # Mongo's equality match against an array field is an implicit
+                # "any element equals this" — exactly array-contains, no
+                # $elemMatch needed for a single scalar comparison.
+                q["active_heads"] = head
             if emergent_only:
                 q["is_emergent"] = True
             if min_priority > 0:
@@ -133,7 +144,17 @@ class Store:
         if status != "all":
             items = [i for i in items if i.get("status") == status]
         if head:
-            items = [i for i in items if i.get("top_head") == head]
+            # Fall back to top_head only for a record predating active_heads —
+            # in-memory records are never that old in practice (a redeploy
+            # wipes the store), but a stale MongoDB document could be, and
+            # falling back keeps it findable under its one known head rather
+            # than silently dropping out of every head-filtered query.
+            #
+            # `in` binds tighter than `or`, so `head in a or b` parses as
+            # `(head in a) or b` — with a non-empty fallback list that is
+            # truthy regardless of head, making the filter match everything.
+            # The parens below are load-bearing, not stylistic.
+            items = [i for i in items if head in (i.get("active_heads") or [i.get("top_head")])]
         if emergent_only:
             items = [i for i in items if i.get("is_emergent")]
         if min_priority > 0:

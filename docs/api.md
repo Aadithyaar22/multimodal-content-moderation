@@ -121,6 +121,7 @@ returns `422`.
     "nlp_only": { "toxicity": 0.31 },
     "fusion": { "toxicity": 0.71 }
   },
+  "active_heads": ["toxicity"],
   "fusion_signal": {
     "is_emergent": true,
     "delta_over_best_unimodal": 0.40,
@@ -140,6 +141,20 @@ returns `422`.
 fused score materially exceeds both unimodal scores — exactly the "signals only
 make sense together" claim. Give it a visible treatment in the UI; it is the
 thing that distinguishes this system from a pair of ordinary classifiers.
+
+**`active_heads` is every head that independently clears threshold, not just
+the loudest one.** The `heads` object always reports both toxicity and
+misinformation, but they are structurally different classifiers (2-way vs
+3-way) and their raw scores are not on a comparable scale — picking "whichever
+is highest" to decide what an item is about is not sound. A real example
+caught this directly: a meme scored toxicity=0.76 (correctly harmful) while
+misinformation happened to read 0.94, so a single "lead" selection would have
+filed it as a misinformation case and made it invisible to a moderator
+filtering for harassment specifically. `GET /queue?head=toxicity` matches
+against `active_heads`, so this item is findable under either head it actually
+clears. Show every entry in `active_heads` in the UI, not only whichever the
+verdict headline happens to name — an item with two active heads is two
+separate reasons to look at it, not one.
 
 **Errors:** `413` file too large, `415` unsupported media type, `422` no input,
 `429` too many requests from this client (retry after `Retry-After` seconds —
@@ -231,7 +246,7 @@ Query params:
 |---|---|---|---|
 | `status` | enum | `pending` | `pending` \| `resolved` \| `all` |
 | `min_priority` | float | `0.0` | Filter by `priority_score` |
-| `head` | enum | — | `toxicity` \| `misinformation` |
+| `head` | enum | — | `toxicity` \| `misinformation` — matches `active_heads`, not `top_head` |
 | `emergent_only` | bool | `false` | Only items where `fusion_signal.is_emergent` |
 | `limit` | int | `25` | Max 100 |
 | `cursor` | string | — | Opaque, from previous response |
@@ -251,6 +266,7 @@ must not make a moderator's overall backlog count look smaller than it is.
       "text_preview": "Sending them a little gift 🎁 they won't…",
       "verdict": { "label": "review", "confidence": 0.71, "priority_score": 0.83 },
       "top_head": "toxicity",
+      "active_heads": ["toxicity"],
       "is_emergent": true,
       "status": "pending",
       "created_at": "2026-08-21T09:14:22Z",

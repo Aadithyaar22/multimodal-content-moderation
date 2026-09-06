@@ -42,6 +42,7 @@ export const MOCK_QUEUE: QueueItem[] = [
     text_preview: "Sending them a little gift 🎁 they won't forget 😂",
     verdict: { label: "review", confidence: 0.71, priority_score: 0.88 },
     top_head: "toxicity",
+    active_heads: ["toxicity"],
     is_emergent: true,
     status: "pending",
     created_at: ago(412),
@@ -54,17 +55,25 @@ export const MOCK_QUEUE: QueueItem[] = [
       "This is what's happening RIGHT NOW because of the new policy — share before they delete this!!",
     verdict: { label: "review", confidence: 0.68, priority_score: 0.81 },
     top_head: "misinformation",
+    active_heads: ["misinformation"],
     is_emergent: true,
     status: "pending",
     created_at: ago(1180),
     age_seconds: 1180,
   },
   {
+    // Stands in for a real production case: toxicity independently cleared
+    // threshold (0.76, correctly "harmful") but misinformation read higher
+    // (0.94), so top_head names only one of the two reasons this item needs
+    // review. active_heads is what the queue's head= filter and the UI badges
+    // actually go by — see docs/api.md's note on active_heads for the source
+    // incident this fixed.
     item_id: "itm_slur_03",
     thumbnail_url: null,
     text_preview: "go back to where you came from, nobody wants you here",
     verdict: { label: "harmful", confidence: 0.94, priority_score: 0.79 },
-    top_head: "toxicity",
+    top_head: "misinformation",
+    active_heads: ["toxicity", "misinformation"],
     is_emergent: false,
     status: "pending",
     created_at: ago(2050),
@@ -76,6 +85,7 @@ export const MOCK_QUEUE: QueueItem[] = [
     text_preview: "Local man declares himself Emperor of the parking lot",
     verdict: { label: "benign", confidence: 0.83, priority_score: 0.34 },
     top_head: "misinformation",
+    active_heads: ["misinformation"],
     is_emergent: false,
     status: "pending",
     created_at: ago(3400),
@@ -87,6 +97,7 @@ export const MOCK_QUEUE: QueueItem[] = [
     text_preview: "Barely used, DM before it's gone 😉 no refunds, cash only",
     verdict: { label: "review", confidence: 0.62, priority_score: 0.58 },
     top_head: "misinformation",
+    active_heads: ["misinformation"],
     is_emergent: true,
     status: "pending",
     created_at: ago(5200),
@@ -98,6 +109,7 @@ export const MOCK_QUEUE: QueueItem[] = [
     text_preview: "Flooding right now near the east ward, no one's doing anything!!",
     verdict: { label: "review", confidence: 0.55, priority_score: 0.51 },
     top_head: "misinformation",
+    active_heads: ["misinformation"],
     is_emergent: false,
     status: "pending",
     created_at: ago(7100),
@@ -187,6 +199,15 @@ function detailFor(item: QueueItem): ItemDetail {
   const cv = item.is_emergent ? fused * 0.31 : fused * 0.78;
   const nlp = item.is_emergent ? fused * 0.44 : fused * 0.86;
 
+  // A head that is in active_heads but isn't top_head still needs a real,
+  // threshold-clearing score rather than the low placeholder a single-head
+  // item gets — itm_slur_03 demonstrates this: misinformation is top_head at
+  // 0.94, but toxicity is also active and must render as genuinely harmful
+  // (0.76-ish), not as a benign afterthought.
+  const secondaryActive = item.active_heads.length > 1;
+  const toxScore = isTox ? fused : secondaryActive ? Math.max(0.5, fused - 0.18) : 0.12;
+  const misinfoScore = !isTox ? fused : secondaryActive ? Math.max(0.5, fused - 0.18) : 0.09;
+
   return {
     item_id: item.item_id,
     created_at: item.created_at,
@@ -206,18 +227,17 @@ function detailFor(item: QueueItem): ItemDetail {
     },
     heads: {
       toxicity: {
-        label: isTox && fused > 0.5 ? "harmful" : "benign",
-        score: isTox ? fused : 0.12,
-        classes: isTox
-          ? { benign: 1 - fused, harmful: fused }
-          : { benign: 0.88, harmful: 0.12 },
+        label: toxScore > 0.5 ? "harmful" : "benign",
+        score: toxScore,
+        classes: { benign: 1 - toxScore, harmful: toxScore },
       },
       misinformation: {
-        label: !isTox && fused > 0.5 ? "misleading" : "true",
-        score: !isTox ? fused : 0.09,
-        classes: !isTox
-          ? { true: 1 - fused, satire: 0.06, misleading: fused - 0.06 }
-          : { true: 0.91, satire: 0.05, misleading: 0.04 },
+        label: misinfoScore > 0.5 ? "misleading" : "true",
+        score: misinfoScore,
+        classes:
+          misinfoScore > 0.5
+            ? { true: 1 - misinfoScore, satire: 0.06, misleading: misinfoScore - 0.06 }
+            : { true: 1 - misinfoScore - 0.09, satire: 0.09, misleading: misinfoScore },
       },
     },
     modality_scores: {
@@ -225,6 +245,7 @@ function detailFor(item: QueueItem): ItemDetail {
       nlp_only: isTox ? { toxicity: nlp } : { misinformation: nlp },
       fusion: isTox ? { toxicity: fused } : { misinformation: fused },
     },
+    active_heads: item.active_heads,
     fusion_signal: {
       is_emergent: item.is_emergent,
       delta_over_best_unimodal: fused - Math.max(cv, nlp),

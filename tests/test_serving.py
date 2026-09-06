@@ -121,6 +121,59 @@ class TestStore:
         items, _ = s.query(emergent_only=True)
         assert [i["item_id"] for i in items] == ["a"]
 
+    def test_head_filter_matches_active_heads_not_just_top_head(self):
+        """The bug this pins: a meme scoring toxicity=0.76 (correctly harmful)
+        had top_head="misinformation" because that head read 0.94 — a 3-way
+        score, not comparable to a 2-way one. Filtering on top_head alone made
+        it invisible to a moderator asking for harassment cases specifically."""
+        s = Store(uri="")
+        s.put(
+            {
+                "item_id": "both",
+                "status": "pending",
+                "priority_score": 0.9,
+                "top_head": "misinformation",
+                "active_heads": ["misinformation", "toxicity"],
+            }
+        )
+        s.put(
+            {
+                "item_id": "misinfo_only",
+                "status": "pending",
+                "priority_score": 0.8,
+                "top_head": "misinformation",
+                "active_heads": ["misinformation"],
+            }
+        )
+        items, _ = s.query(head="toxicity")
+        assert [i["item_id"] for i in items] == ["both"]
+
+    def test_head_filter_never_matches_everything(self):
+        """Regression for a real bug caught before it shipped: `head in
+        active_heads or [top_head]` parses as `(head in active_heads) or
+        [top_head]`, and a non-empty fallback list is truthy regardless of
+        `head` — so the filter matched every row, not just the requested one."""
+        s = Store(uri="")
+        s.put(
+            {
+                "item_id": "a",
+                "status": "pending",
+                "priority_score": 0.5,
+                "top_head": "toxicity",
+                "active_heads": ["toxicity"],
+            }
+        )
+        items, _ = s.query(head="misinformation")
+        assert items == []
+
+    def test_head_filter_falls_back_to_top_head_for_old_records(self):
+        """A record predating active_heads (a pre-existing MongoDB document,
+        in practice) must stay findable under the one head it does know."""
+        s = Store(uri="")
+        s.put({"item_id": "old", "status": "pending", "priority_score": 0.5, "top_head": "toxicity"})
+        items, _ = s.query(head="toxicity")
+        assert [i["item_id"] for i in items] == ["old"]
+
     def test_memory_store_is_bounded(self):
         """An unbounded dict in a long-running container is a slow leak."""
         from mcm.serving.store import MAX_MEMORY_ITEMS
