@@ -11,7 +11,8 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { getAttributions, getExplanation, getItem, resolveApiUrl } from "@/lib/api";
-import type { Attributions, Explanation, ItemDetail } from "@/lib/types";
+import type { ItemDetail } from "@/lib/types";
+import { useAsyncResource } from "@/hooks/useAsyncResource";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
 import { EvidencePanel } from "@/components/EvidencePanel";
@@ -26,29 +27,29 @@ import {
 export default function ItemPage({ params }: PageProps<"/items/[id]">) {
   const { id } = use(params);
   const [item, setItem] = useState<ItemDetail | null>(null);
-  const [explanation, setExplanation] = useState<Explanation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Both loading/error/done explicitly, not a bare T | null — so a failed
+  // fetch shows a retry affordance instead of masquerading as "still loading"
+  // forever. See useAsyncResource's own note for how that surfaced in practice.
+  const explanationState = useAsyncResource(id, getExplanation);
   // Attributions live on their own endpoint in the contract, so they are
   // fetched separately rather than read off the item record — that way the
   // panel appears as soon as the backend starts returning them.
-  const [attributions, setAttributions] = useState<Attributions | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const attributionsState = useAsyncResource(id, getAttributions);
 
   useEffect(() => {
     let cancelled = false;
     getItem(id)
       .then((d) => !cancelled && setItem(d))
       .catch((e) => !cancelled && setError(e.message));
-    // Fired in parallel, rendered when it lands.
-    getExplanation(id)
-      .then((e) => !cancelled && setExplanation(e))
-      .catch(() => {});
-    getAttributions(id)
-      .then((a) => !cancelled && setAttributions(a))
-      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [id]);
+
+  const explanation = explanationState.phase === "done" ? explanationState.data : null;
+  const attributions = attributionsState.phase === "done" ? attributionsState.data : null;
 
   if (error) {
     return (
@@ -179,14 +180,32 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
       )}
 
       <GlassPanel title="Model reasoning" className="animate-rise">
-        {explanation === null ? (
+        {explanationState.phase === "loading" ? (
           <div className="space-y-3">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-11/12" />
             <Skeleton className="h-4 w-4/5" />
             <p className="label-tech pt-2 text-outline">Generating…</p>
           </div>
-        ) : explanation.status === "ready" && explanation.narrative ? (
+        ) : explanationState.phase === "error" ? (
+          // Distinct from "loading" on purpose: a transient failure here — a
+          // dropped connection, a backend redeploy mid-request — must not
+          // masquerade as an explanation that is still on its way, with no
+          // indication anything went wrong and no way to ask again short of a
+          // full page reload.
+          <div className="space-y-3">
+            <p className="text-sm text-on-surface-variant">
+              Could not load the explanation ({explanationState.message}). The
+              scores and attributions above are unaffected.
+            </p>
+            <button
+              onClick={explanationState.retry}
+              className="label-tech rounded border border-outline-variant px-3 py-2 text-on-surface hover:border-outline"
+            >
+              Retry
+            </button>
+          </div>
+        ) : explanation && explanation.status === "ready" && explanation.narrative ? (
           <>
             <p className="font-editorial text-lg leading-relaxed text-on-surface">
               {explanation.narrative}
