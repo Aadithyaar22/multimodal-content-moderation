@@ -23,7 +23,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 import torch
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from PIL import Image
@@ -41,6 +41,7 @@ from mcm.serving.inference import (
     run_arms,
     verdict_for,
 )
+from mcm.serving.ratelimit import enforce_rate_limit
 from mcm.serving.schemas import (
     Attributions,
     DecisionRequest,
@@ -166,10 +167,15 @@ def health() -> Health:
         device=str(bundle.device) if bundle else "unknown",
         version=__version__,
         loaded_at=utcnow() if bundle else None,
+        # Without this, "still loading" and "permanently failed" are the same
+        # models_loaded=false response, and a client polling on that alone
+        # cannot tell a 30s cold start from a crashed deployment — it just
+        # keeps polling forever with nothing to show the reason.
+        error=_state["error"],
     )
 
 
-@app.post("/api/v1/analyze", response_model=ItemDetail)
+@app.post("/api/v1/analyze", response_model=ItemDetail, dependencies=[Depends(enforce_rate_limit)])
 async def analyze(
     text: Annotated[str | None, Form()] = None,
     image: Annotated[UploadFile | None, File()] = None,
@@ -439,7 +445,15 @@ def queue(
         )
 
     next_cursor = str(offset + limit) if offset + limit < total else None
-    return QueueResponse(items=items, next_cursor=next_cursor, total_pending=total)
+    return QueueResponse(
+        items=items,
+        next_cursor=next_cursor,
+        total_matching=total,
+        # Always the system-wide pending count, not `total` — a moderator
+        # filtering to "emergent only" must still see the true backlog size,
+        # not the size of the slice they are currently looking at.
+        total_pending=_store.count_pending(),
+    )
 
 
 @app.get("/api/v1/stats", response_model=Stats)

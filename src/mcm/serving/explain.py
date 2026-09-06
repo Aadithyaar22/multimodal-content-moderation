@@ -107,8 +107,16 @@ def _try_gemini(prompt: str, timeout: float) -> tuple[str, str] | None:
     if not key:
         return None
     from google import genai
+    from google.genai import types
 
-    client = genai.Client(api_key=key)
+    # Without an explicit timeout this call has none: get_explanation is a sync
+    # endpoint, and FastAPI runs sync handlers in a bounded thread pool, so a
+    # single hung request can tie up a worker indefinitely and the "compute
+    # first, explain second" contract stops holding under exactly the failure
+    # it was meant to survive. Timeout is milliseconds in this SDK.
+    client = genai.Client(
+        api_key=key, http_options=types.HttpOptions(timeout=int(timeout * 1000))
+    )
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
     resp = client.models.generate_content(
         model=model,

@@ -1,7 +1,8 @@
 # API Contract
 
-Backend: FastAPI on HuggingFace Spaces or Render.
-Frontend: Next.js on Vercel.
+Backend: FastAPI on Google Cloud Run. Frontend: Next.js on Vercel. See
+[deployment.md](deployment.md) for why Cloud Run rather than the free tiers
+named in PROJECT_CONTEXT Sec. 7.
 
 Base URL: `{NEXT_PUBLIC_API_BASE}/api/v1`
 
@@ -19,10 +20,12 @@ roughly 300–800ms. The LLM narrative takes 2–5s and lives behind a separate
 call. Do not block the verdict UI on the explanation — render scores
 immediately, then fill the narrative in. This mirrors the CivicPulse pattern.
 
-**Cold starts are real.** On Render's free tier the container sleeps and takes
-30–50s to wake. `GET /health` is cheap and unauthenticated; call it on app mount
+**Cold starts are real.** Cloud Run scales to zero between demos and takes
+15–20s to wake. `GET /health` is cheap and unauthenticated; call it on app mount
 and show a warming state rather than letting the first real request look like a
-hang.
+hang. `models_loaded: false` while `status: "ok"` means "still loading" — poll
+again. `status: "error"` with an `error` message means loading finished and
+failed; stop polling and show the failure, since it will not resolve on its own.
 
 **Confidence is not a verdict.** Every response carries `confidence` and a
 `recommended_action` derived from thresholds. The UI must never present a score
@@ -44,9 +47,14 @@ Liveness plus model readiness. No auth.
   "warm": true,
   "device": "cpu",
   "version": "0.1.0",
-  "loaded_at": "2026-08-21T09:12:04Z"
+  "loaded_at": "2026-08-21T09:12:04Z",
+  "error": null
 }
 ```
+
+`error` is `null` unless `status: "error"`, in which case it carries the reason
+loading failed. This is what lets a client tell a 20s cold start apart from a
+crashed deployment — both otherwise present as `models_loaded: false` forever.
 
 `models_loaded: false` means the container is up but weights are still loading —
 show a warming state and poll every 2s.
@@ -127,6 +135,9 @@ make sense together" claim. Give it a visible treatment in the UI; it is the
 thing that distinguishes this system from a pair of ordinary classifiers.
 
 **Errors:** `413` file too large, `415` unsupported media type, `422` no input,
+`429` too many requests from this client (retry after `Retry-After` seconds —
+this is the only rate-limited endpoint, since it is the only one that costs a
+CLIP forward pass and, once an explanation is requested, a paid LLM call),
 `503` models still loading (retry after `Retry-After` seconds).
 
 ---
@@ -218,6 +229,12 @@ Query params:
 | `limit` | int | `25` | Max 100 |
 | `cursor` | string | — | Opaque, from previous response |
 
+Two counts come back, and they answer different questions. `total_matching` is
+how many rows satisfied *this call's* filters — what `next_cursor` paginates
+over. `total_pending` is the system-wide pending count regardless of any filter
+applied — the number for a badge or header. Filtering to `emergent_only=true`
+must not make a moderator's overall backlog count look smaller than it is.
+
 ```json
 {
   "items": [
@@ -234,6 +251,7 @@ Query params:
     }
   ],
   "next_cursor": "eyJvIjoyNX0",
+  "total_matching": 25,
   "total_pending": 143
 }
 ```

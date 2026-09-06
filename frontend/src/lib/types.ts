@@ -17,6 +17,8 @@ export interface Health {
   device: string;
   version: string;
   loaded_at: string;
+  /** Set only when status === "error" — loading finished and failed. */
+  error: string | null;
 }
 
 export interface HeadScore<T extends string> {
@@ -124,6 +126,9 @@ export interface QueueItem {
 export interface QueueResponse {
   items: QueueItem[];
   next_cursor: string | null;
+  /** Rows matching this call's own filters — what next_cursor paginates over. */
+  total_matching: number;
+  /** System-wide pending count, independent of any filter this call applied. */
   total_pending: number;
 }
 

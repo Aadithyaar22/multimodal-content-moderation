@@ -12,6 +12,7 @@ a slow leak, and the queue only ever shows the most recent items anyway.
 from __future__ import annotations
 
 import os
+import threading
 from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import Any
@@ -33,6 +34,15 @@ class Store:
     def __init__(self, uri: str | None = None):
         self.uri = uri or os.getenv("MONGODB_URI") or ""
         self._memory: OrderedDict[str, dict[str, Any]] = OrderedDict()
+        # FastAPI runs sync path operations in a thread pool, and Cloud Run is
+        # configured for concurrency=4 per instance, so the memory fallback is
+        # genuinely accessed from multiple threads at once. A dict's individual
+        # operations are each atomic under the GIL, but put()'s eviction is a
+        # read-check-act sequence across two calls (len() then popitem()); two
+        # threads interleaved there can both decide eviction is needed and pop
+        # two items for one insert, silently dropping a moderator's item from
+        # the queue. The lock makes each public method atomic as a whole.
+        self._lock = threading.Lock()
         self._collection = None
 
         if self.uri:
@@ -62,22 +72,25 @@ class Store:
         if self._collection is not None:
             self._collection.replace_one({"item_id": item["item_id"]}, item, upsert=True)
             return
-        self._memory[item["item_id"]] = item
-        self._memory.move_to_end(item["item_id"])
-        while len(self._memory) > MAX_MEMORY_ITEMS:
-            self._memory.popitem(last=False)
+        with self._lock:
+            self._memory[item["item_id"]] = item
+            self._memory.move_to_end(item["item_id"])
+            while len(self._memory) > MAX_MEMORY_ITEMS:
+                self._memory.popitem(last=False)
 
     def get(self, item_id: str) -> dict[str, Any] | None:
         if self._collection is not None:
             return self._collection.find_one({"item_id": item_id}, {"_id": 0})
-        return self._memory.get(item_id)
+        with self._lock:
+            return self._memory.get(item_id)
 
     def update(self, item_id: str, patch: dict[str, Any]) -> None:
         if self._collection is not None:
             self._collection.update_one({"item_id": item_id}, {"$set": patch})
             return
-        if item_id in self._memory:
-            self._memory[item_id].update(patch)
+        with self._lock:
+            if item_id in self._memory:
+                self._memory[item_id].update(patch)
 
     def query(
         self,
@@ -88,7 +101,14 @@ class Store:
         limit: int = 25,
         offset: int = 0,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Ranked queue. Ordering is by priority, never by arrival time."""
+        """Ranked queue. Ordering is by priority, never by arrival time.
+
+        The returned count reflects exactly the filters passed in — it answers
+        "how many rows matched this query" for pagination, not "how many items
+        are pending" (that is ``count_pending``). Conflating the two used to
+        surface as ``total_pending: 3`` when a caller asked for
+        ``status=resolved`` and got 3 resolved rows back.
+        """
         if self._collection is not None:
             q: dict[str, Any] = {}
             if status != "all":
@@ -108,7 +128,8 @@ class Store:
             )
             return list(cursor), total
 
-        items = list(self._memory.values())
+        with self._lock:
+            items = list(self._memory.values())
         if status != "all":
             items = [i for i in items if i.get("status") == status]
         if head:
@@ -120,12 +141,25 @@ class Store:
         items.sort(key=lambda i: i.get("priority_score", 0), reverse=True)
         return items[offset : offset + limit], len(items)
 
+    def count_pending(self) -> int:
+        """Total pending items, independent of whatever filters a caller applied.
+
+        This is the "how many are waiting" figure for a badge or header count,
+        and must not shrink just because the caller is looking at a filtered
+        view of the queue.
+        """
+        if self._collection is not None:
+            return self._collection.count_documents({"status": "pending"})
+        with self._lock:
+            return sum(1 for i in self._memory.values() if i.get("status") == "pending")
+
     def aggregate_stats(self) -> dict[str, Any]:
         """Dashboard figures, computed over whatever records exist."""
         if self._collection is not None:
             items = list(self._collection.find({}, {"_id": 0}))
         else:
-            items = list(self._memory.values())
+            with self._lock:
+                items = list(self._memory.values())
 
         pending = [i for i in items if i.get("status") == "pending"]
         resolved = [i for i in items if i.get("status") == "resolved"]

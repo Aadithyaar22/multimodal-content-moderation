@@ -16,3 +16,13 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 pymongo>=4.8
+
+# LLM narrative generation (mcm.serving.explain). The image build installs from
+# this file with `pip install --no-deps -e .`, so pyproject.toml's own [serve]
+# extra — which lists both of these — is never consulted; omitting them here
+# silently disabled the explanation endpoint in every deployed build. Both
+# imports in explain.py are already lazy and wrapped in try/except per backend,
+# so an unset API key still degrades to status="unavailable" as documented —
+# only a genuinely absent package should no longer be the cause.
+google-genai>=0.3
+groq>=0.11

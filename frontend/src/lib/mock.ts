@@ -108,7 +108,8 @@ export const MOCK_QUEUE: QueueItem[] = [
 export const MOCK_QUEUE_RESPONSE: QueueResponse = {
   items: MOCK_QUEUE,
   next_cursor: null,
-  total_pending: MOCK_QUEUE.length,
+  total_matching: MOCK_QUEUE.length,
+  total_pending: MOCK_QUEUE.filter((i) => i.status === "pending").length,
 };
 
 const EXPLANATIONS: Record<string, Explanation> = {
