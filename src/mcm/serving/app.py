@@ -135,6 +135,31 @@ def _run_deepfake(bundle: ModelBundle, pil):
         return DeepfakeResult(False, 0.0, "not_checked", reason="detector error")
 
 
+def _run_ocr(bundle: ModelBundle, pil) -> str | None:
+    """Extract embedded meme text, degrading to None on any failure.
+
+    Informational only: this is displayed alongside the caption for a
+    moderator's own reading, never concatenated into the text the classifiers
+    see. The heads were trained on Hateful Memes captions and Fakeddit titles,
+    neither of which includes OCR'd meme text, so splicing it into the
+    classifier input at inference time would feed the model a distribution it
+    has never seen and was never evaluated against — an untested behaviour
+    change dressed up as a feature. Extract-and-display is what the frontend
+    and docs/api.md's own example already expect.
+    """
+    if bundle.ocr is None or pil is None:
+        return None
+    try:
+        import numpy as np
+
+        result = bundle.ocr.readtext(np.array(pil), detail=0)
+        text = " ".join(result).strip()
+        return text or None
+    except Exception:  # noqa: BLE001
+        log.exception("OCR failed")
+        return None
+
+
 def _bundle() -> ModelBundle:
     bundle = _state["bundle"]
     if bundle is None:
@@ -234,6 +259,10 @@ async def analyze(
     # reasons about pixel artefacts, which caption text says nothing about.
     deepfake = _run_deepfake(bundle, pil)
 
+    ocr_started = time.perf_counter()
+    ocr_text = _run_ocr(bundle, pil) if run_ocr else None
+    timings["ocr"] = int((time.perf_counter() - ocr_started) * 1000)
+
     # The reported verdict follows whichever head scored highest; that is the
     # reason the item is in the queue at all.
     lead_task = max(per_task, key=lambda t: per_task[t].fusion)
@@ -279,7 +308,7 @@ async def analyze(
             "text": text or "",
             "has_image": pil is not None,
             "image_url": f"/api/v1/items/{item_id}/image" if pil is not None else None,
-            "ocr_text": None,
+            "ocr_text": ocr_text,
             "modalities": [m for m, on in (("image", pil is not None), ("text", bool(text))) if on],
         },
         "verdict": {

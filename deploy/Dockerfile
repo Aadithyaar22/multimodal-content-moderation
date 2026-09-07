@@ -44,7 +44,7 @@ RUN pip install --no-cache-dir --no-deps -e .
 # copies. Without this the unprivileged user cannot create the checkpoint
 # directory or write the model cache, and both downloads below fail on a
 # permission error that reads as a missing file.
-RUN mkdir -p /home/user/app/checkpoints /home/user/.cache/huggingface /home/user/.cache/torch \
+RUN mkdir -p /home/user/app/checkpoints /home/user/.cache/huggingface /home/user/.cache/torch /home/user/.EasyOCR \
     && chown -R user:user /home/user
 
 USER user
@@ -72,6 +72,15 @@ CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32'); \
 AutoModelForImageClassification.from_pretrained('dima806/deepfake_vs_real_image_detection'); \
 AutoImageProcessor.from_pretrained('dima806/deepfake_vs_real_image_detection'); \
 print('model cache warmed')"
+
+# EasyOCR's own weights (~94MB: a CRAFT detector plus an English recognizer),
+# baked in the same way and for the same reason — an unbaked model here is a
+# ~2 minute first-request penalty on a container that scales to zero between
+# demos, which is a far worse place to pay that cost than build time.
+RUN python -c "\
+import easyocr; \
+easyocr.Reader(['en'], gpu=False, verbose=False); \
+print('OCR cache warmed')"
 
 # Fail the build if the checkpoints did not land, rather than shipping an image
 # that starts cleanly and then serves nothing.

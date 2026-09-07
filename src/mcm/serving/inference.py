@@ -65,6 +65,8 @@ class ModelBundle:
     arms: dict[str, dict[str, torch.nn.Module]] = field(default_factory=dict)
     #: Optional; the API degrades to checked=False if it fails to load.
     deepfake: object | None = None
+    #: Optional; the API degrades to ocr_text=None if it fails to load.
+    ocr: object | None = None
     #: Per-arm temperature from scripts/calibrate.py, applied to logits before
     #: softmax. Defaults to 1.0 for any checkpoint predating calibration.
     temperatures: dict[str, dict[str, float]] = field(default_factory=dict)
@@ -100,6 +102,19 @@ def load_bundle(checkpoint_dir: Path | None = None) -> ModelBundle:
             bundle.deepfake = DeepfakeDetector(clip, device=device)
         except Exception as e:  # noqa: BLE001
             log.warning("deepfake detector unavailable (%s); continuing without it", e)
+
+    # Same shape as the deepfake branch: independent of the fusion arms, its
+    # absence must not prevent the rest of the system from serving. EasyOCR's
+    # own device selection only understands "cuda" or CPU, so gpu is always
+    # False here — MPS gains nothing from CRAFT's small conv stack anyway, and
+    # passing gpu=True on a non-CUDA machine raises rather than falling back.
+    if os.getenv("MCM_DISABLE_OCR", "").lower() not in ("1", "true", "yes"):
+        try:
+            import easyocr
+
+            bundle.ocr = easyocr.Reader(["en"], gpu=False, verbose=False)
+        except Exception as e:  # noqa: BLE001
+            log.warning("OCR reader unavailable (%s); continuing without it", e)
 
     for task, dataset in TASK_DATASET.items():
         arms: dict[str, torch.nn.Module] = {}

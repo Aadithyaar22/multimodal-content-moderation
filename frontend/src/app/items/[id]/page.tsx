@@ -140,6 +140,9 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
           {item.input.ocr_text && (
             <p className="mt-4 border-l-2 border-outline-variant pl-3 text-sm text-outline">
               Text detected in image: {item.input.ocr_text}
+              <span className="block text-xs opacity-70">
+                Reference only — not merged into the caption the classifiers scored.
+              </span>
             </p>
           )}
         </GlassPanel>
