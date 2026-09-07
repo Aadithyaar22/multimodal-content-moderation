@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitDecision } from "@/lib/api";
 import { announceToIsland } from "@/components/DynamicIsland";
+import { getModeratorId } from "@/lib/moderator";
 import type { DecisionAction } from "@/lib/types";
 
 const ACTIONS: Array<{ action: DecisionAction; label: string; key: string }> = [
@@ -39,7 +40,7 @@ export function DecisionBar({ itemId }: { itemId: string }) {
     try {
       await submitDecision(itemId, {
         action,
-        moderator_id: "mod_demo",
+        moderator_id: getModeratorId(),
         agreed_with_model: agreed ?? undefined,
         explanation_was_useful: useful ?? undefined,
       });
