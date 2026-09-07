@@ -1,0 +1,704 @@
+[
+  {
+    "dataset": "hateful_memes",
+    "task": "toxicity",
+    "n_sampled": 40,
+    "n_image_evaluated": 40,
+    "n_text_evaluated": 40,
+    "seed": 0,
+    "mask_fraction": 0.25,
+    "items": [
+      {
+        "uid": "hateful_memes:36421",
+        "baseline": 0.5366,
+        "image_top_drop": -0.2139,
+        "image_random_drop": -0.2205,
+        "text_top_drop": 0.2858,
+        "text_random_drop": 0.1673
+      },
+      {
+        "uid": "hateful_memes:24658",
+        "baseline": 0.7395,
+        "image_top_drop": 0.3268,
+        "image_random_drop": 0.0199,
+        "text_top_drop": 0.1249,
+        "text_random_drop": 0.0391
+      },
+      {
+        "uid": "hateful_memes:85471",
+        "baseline": 0.2673,
+        "image_top_drop": -0.0376,
+        "image_random_drop": -0.0794,
+        "text_top_drop": 0.0143,
+        "text_random_drop": -0.0011
+      },
+      {
+        "uid": "hateful_memes:94086",
+        "baseline": 0.2584,
+        "image_top_drop": -0.0098,
+        "image_random_drop": -0.0064,
+        "text_top_drop": 0.0122,
+        "text_random_drop": -0.0098
+      },
+      {
+        "uid": "hateful_memes:31057",
+        "baseline": 0.7408,
+        "image_top_drop": -0.0163,
+        "image_random_drop": -0.0177,
+        "text_top_drop": 0.307,
+        "text_random_drop": -0.0088
+      },
+      {
+        "uid": "hateful_memes:10274",
+        "baseline": 0.2423,
+        "image_top_drop": -0.0158,
+        "image_random_drop": 0.0047,
+        "text_top_drop": -0.001,
+        "text_random_drop": -0.0038
+      },
+      {
+        "uid": "hateful_memes:57286",
+        "baseline": 0.3267,
+        "image_top_drop": -0.0343,
+        "image_random_drop": -0.3904,
+        "text_top_drop": 0.0791,
+        "text_random_drop": -0.0504
+      },
+      {
+        "uid": "hateful_memes:86025",
+        "baseline": 0.5408,
+        "image_top_drop": 0.252,
+        "image_random_drop": -0.0461,
+        "text_top_drop": 0.2822,
+        "text_random_drop": 0.1585
+      },
+      {
+        "uid": "hateful_memes:25463",
+        "baseline": 0.2798,
+        "image_top_drop": 0.0277,
+        "image_random_drop": -0.0321,
+        "text_top_drop": 0.0159,
+        "text_random_drop": -0.0064
+      },
+      {
+        "uid": "hateful_memes:13765",
+        "baseline": 0.2326,
+        "image_top_drop": 0.0,
+        "image_random_drop": -0.0011,
+        "text_top_drop": -0.0018,
+        "text_random_drop": -0.0046
+      },
+      {
+        "uid": "hateful_memes:87390",
+        "baseline": 0.7245,
+        "image_top_drop": -0.0262,
+        "image_random_drop": -0.0193,
+        "text_top_drop": 0.4534,
+        "text_random_drop": 0.0167
+      },
+      {
+        "uid": "hateful_memes:27519",
+        "baseline": 0.2654,
+        "image_top_drop": 0.0174,
+        "image_random_drop": -0.0027,
+        "text_top_drop": 0.0211,
+        "text_random_drop": -0.007
+      },
+      {
+        "uid": "hateful_memes:38496",
+        "baseline": 0.2899,
+        "image_top_drop": -0.0933,
+        "image_random_drop": -0.311,
+        "text_top_drop": 0.0457,
+        "text_random_drop": 0.0459
+      },
+      {
+        "uid": "hateful_memes:49531",
+        "baseline": 0.2563,
+        "image_top_drop": 0.0016,
+        "image_random_drop": -0.0159,
+        "text_top_drop": 0.0111,
+        "text_random_drop": 0.0002
+      },
+      {
+        "uid": "hateful_memes:34170",
+        "baseline": 0.2431,
+        "image_top_drop": -0.0048,
+        "image_random_drop": -0.0046,
+        "text_top_drop": -0.0046,
+        "text_random_drop": -0.008
+      },
+      {
+        "uid": "hateful_memes:91806",
+        "baseline": 0.6869,
+        "image_top_drop": 0.0351,
+        "image_random_drop": 0.2109,
+        "text_top_drop": 0.3511,
+        "text_random_drop": 0.3511
+      },
+      {
+        "uid": "hateful_memes:76298",
+        "baseline": 0.3301,
+        "image_top_drop": 0.0216,
+        "image_random_drop": -0.2014,
+        "text_top_drop": 0.0786,
+        "text_random_drop": 0.0831
+      },
+      {
+        "uid": "hateful_memes:09241",
+        "baseline": 0.3998,
+        "image_top_drop": -0.1474,
+        "image_random_drop": -0.3597,
+        "text_top_drop": 0.1386,
+        "text_random_drop": -0.0157
+      },
+      {
+        "uid": "hateful_memes:54920",
+        "baseline": 0.3822,
+        "image_top_drop": -0.0841,
+        "image_random_drop": 0.0056,
+        "text_top_drop": 0.1148,
+        "text_random_drop": -0.1609
+      },
+      {
+        "uid": "hateful_memes:87039",
+        "baseline": 0.6754,
+        "image_top_drop": -0.0201,
+        "image_random_drop": 0.0268,
+        "text_top_drop": 0.038,
+        "text_random_drop": -0.0092
+      },
+      {
+        "uid": "hateful_memes:89432",
+        "baseline": 0.341,
+        "image_top_drop": -0.3005,
+        "image_random_drop": 0.043,
+        "text_top_drop": 0.0846,
+        "text_random_drop": 0.0803
+      },
+      {
+        "uid": "hateful_memes:07521",
+        "baseline": 0.6933,
+        "image_top_drop": 0.0,
+        "image_random_drop": 0.014,
+        "text_top_drop": 0.4476,
+        "text_random_drop": 0.4423
+      },
+      {
+        "uid": "hateful_memes:34067",
+        "baseline": 0.2506,
+        "image_top_drop": -0.0063,
+        "image_random_drop": -0.0056,
+        "text_top_drop": 0.0013,
+        "text_random_drop": 0.0001
+      },
+      {
+        "uid": "hateful_memes:41692",
+        "baseline": 0.7636,
+        "image_top_drop": -0.0013,
+        "image_random_drop": -0.0001,
+        "text_top_drop": 0.0101,
+        "text_random_drop": 0.0
+      },
+      {
+        "uid": "hateful_memes:52710",
+        "baseline": 0.7048,
+        "image_top_drop": -0.0351,
+        "image_random_drop": 0.1622,
+        "text_top_drop": 0.4497,
+        "text_random_drop": 0.179
+      },
+      {
+        "uid": "hateful_memes:45263",
+        "baseline": 0.767,
+        "image_top_drop": 0.0082,
+        "image_random_drop": 0.0042,
+        "text_top_drop": 0.5043,
+        "text_random_drop": 0.0049
+      },
+      {
+        "uid": "hateful_memes:57932",
+        "baseline": 0.7531,
+        "image_top_drop": 0.2953,
+        "image_random_drop": 0.1763,
+        "text_top_drop": 0.0419,
+        "text_random_drop": 0.0026
+      },
+      {
+        "uid": "hateful_memes:30762",
+        "baseline": 0.6538,
+        "image_top_drop": 0.3042,
+        "image_random_drop": 0.2752,
+        "text_top_drop": 0.2722,
+        "text_random_drop": -0.0184
+      },
+      {
+        "uid": "hateful_memes:10396",
+        "baseline": 0.244,
+        "image_top_drop": 0.008,
+        "image_random_drop": 0.0056,
+        "text_top_drop": 0.0065,
+        "text_random_drop": 0.0073
+      },
+      {
+        "uid": "hateful_memes:37405",
+        "baseline": 0.5133,
+        "image_top_drop": 0.127,
+        "image_random_drop": 0.1352,
+        "text_top_drop": 0.1565,
+        "text_random_drop": 0.1565
+      },
+      {
+        "uid": "hateful_memes:39405",
+        "baseline": 0.7316,
+        "image_top_drop": 0.4515,
+        "image_random_drop": 0.3203,
+        "text_top_drop": 0.4517,
+        "text_random_drop": 0.0103
+      },
+      {
+        "uid": "hateful_memes:69308",
+        "baseline": 0.2645,
+        "image_top_drop": 0.0151,
+        "image_random_drop": -0.0083,
+        "text_top_drop": 0.0065,
+        "text_random_drop": -0.0682
+      },
+      {
+        "uid": "hateful_memes:85912",
+        "baseline": 0.4652,
+        "image_top_drop": -0.11,
+        "image_random_drop": -0.035,
+        "text_top_drop": 0.1221,
+        "text_random_drop": -0.0109
+      },
+      {
+        "uid": "hateful_memes:89307",
+        "baseline": 0.2483,
+        "image_top_drop": 0.0101,
+        "image_random_drop": -0.0002,
+        "text_top_drop": 0.0002,
+        "text_random_drop": -0.0198
+      },
+      {
+        "uid": "hateful_memes:02846",
+        "baseline": 0.2739,
+        "image_top_drop": 0.0019,
+        "image_random_drop": -0.0862,
+        "text_top_drop": -0.0008,
+        "text_random_drop": 0.0032
+      },
+      {
+        "uid": "hateful_memes:93046",
+        "baseline": 0.4433,
+        "image_top_drop": 0.092,
+        "image_random_drop": 0.0766,
+        "text_top_drop": 0.1336,
+        "text_random_drop": 0.0059
+      },
+      {
+        "uid": "hateful_memes:68230",
+        "baseline": 0.3342,
+        "image_top_drop": -0.0687,
+        "image_random_drop": -0.0617,
+        "text_top_drop": 0.0941,
+        "text_random_drop": 0.0777
+      },
+      {
+        "uid": "hateful_memes:82675",
+        "baseline": 0.2885,
+        "image_top_drop": 0.0047,
+        "image_random_drop": 0.0116,
+        "text_top_drop": 0.0213,
+        "text_random_drop": 0.0213
+      },
+      {
+        "uid": "hateful_memes:31569",
+        "baseline": 0.7476,
+        "image_top_drop": -0.0189,
+        "image_random_drop": -0.0198,
+        "text_top_drop": 0.4679,
+        "text_random_drop": 0.2761
+      },
+      {
+        "uid": "hateful_memes:25749",
+        "baseline": 0.2879,
+        "image_top_drop": 0.0148,
+        "image_random_drop": 0.024,
+        "text_top_drop": 0.0086,
+        "text_random_drop": 0.0086
+      }
+    ],
+    "image": {
+      "n": 40,
+      "mean_top_deletion_drop": 0.0193,
+      "mean_random_deletion_drop": -0.0102,
+      "faithfulness_gap": 0.0295,
+      "paired_ttest": {
+        "t": 1.424,
+        "p": 0.1623
+      }
+    },
+    "text": {
+      "n": 40,
+      "mean_top_deletion_drop": 0.1412,
+      "mean_random_deletion_drop": 0.0434,
+      "faithfulness_gap": 0.0978,
+      "paired_ttest": {
+        "t": 4.47,
+        "p": 0.0001
+      }
+    }
+  },
+  {
+    "dataset": "fakeddit",
+    "task": "misinformation",
+    "n_sampled": 40,
+    "n_image_evaluated": 40,
+    "n_text_evaluated": 40,
+    "seed": 0,
+    "mask_fraction": 0.25,
+    "items": [
+      {
+        "uid": "fakeddit:test_1057",
+        "baseline": 0.9379,
+        "image_top_drop": -0.0003,
+        "image_random_drop": -0.0021,
+        "text_top_drop": 0.002,
+        "text_random_drop": -0.0015
+      },
+      {
+        "uid": "fakeddit:test_400",
+        "baseline": 0.9458,
+        "image_top_drop": -0.0006,
+        "image_random_drop": -0.0009,
+        "text_top_drop": 0.003,
+        "text_random_drop": -0.0002
+      },
+      {
+        "uid": "fakeddit:test_1352",
+        "baseline": 0.9435,
+        "image_top_drop": -0.0001,
+        "image_random_drop": -0.0056,
+        "text_top_drop": 0.0137,
+        "text_random_drop": 0.0001
+      },
+      {
+        "uid": "fakeddit:test_1296",
+        "baseline": 0.9434,
+        "image_top_drop": -0.0018,
+        "image_random_drop": -0.0023,
+        "text_top_drop": 0.0012,
+        "text_random_drop": -0.0023
+      },
+      {
+        "uid": "fakeddit:test_145",
+        "baseline": 0.1373,
+        "image_top_drop": -0.0022,
+        "image_random_drop": -0.0189,
+        "text_top_drop": 0.0004,
+        "text_random_drop": -0.0106
+      },
+      {
+        "uid": "fakeddit:test_734",
+        "baseline": 0.9353,
+        "image_top_drop": 0.0081,
+        "image_random_drop": -0.0029,
+        "text_top_drop": 0.0092,
+        "text_random_drop": -0.0052
+      },
+      {
+        "uid": "fakeddit:test_1275",
+        "baseline": 0.1405,
+        "image_top_drop": -0.0007,
+        "image_random_drop": -0.0031,
+        "text_top_drop": 0.0033,
+        "text_random_drop": 0.0014
+      },
+      {
+        "uid": "fakeddit:test_785",
+        "baseline": 0.9456,
+        "image_top_drop": -0.0077,
+        "image_random_drop": -0.0076,
+        "text_top_drop": 0.003,
+        "text_random_drop": -0.0027
+      },
+      {
+        "uid": "fakeddit:test_643",
+        "baseline": 0.9468,
+        "image_top_drop": -0.0003,
+        "image_random_drop": -0.0017,
+        "text_top_drop": 0.0022,
+        "text_random_drop": 0.0002
+      },
+      {
+        "uid": "fakeddit:test_228",
+        "baseline": 0.1394,
+        "image_top_drop": -0.5939,
+        "image_random_drop": -0.4699,
+        "text_top_drop": 0.0,
+        "text_random_drop": -0.0071
+      },
+      {
+        "uid": "fakeddit:test_1132",
+        "baseline": 0.9442,
+        "image_top_drop": -0.003,
+        "image_random_drop": -0.0027,
+        "text_top_drop": 0.0017,
+        "text_random_drop": 0.0007
+      },
+      {
+        "uid": "fakeddit:test_1016",
+        "baseline": 0.9465,
+        "image_top_drop": -0.0006,
+        "image_random_drop": -0.0036,
+        "text_top_drop": 0.0038,
+        "text_random_drop": -0.0017
+      },
+      {
+        "uid": "fakeddit:test_360",
+        "baseline": 0.9352,
+        "image_top_drop": -0.007,
+        "image_random_drop": -0.0061,
+        "text_top_drop": 0.1209,
+        "text_random_drop": -0.0002
+      },
+      {
+        "uid": "fakeddit:test_4",
+        "baseline": 0.9014,
+        "image_top_drop": -0.04,
+        "image_random_drop": -0.0431,
+        "text_top_drop": -0.0107,
+        "text_random_drop": -0.0107
+      },
+      {
+        "uid": "fakeddit:test_340",
+        "baseline": 0.9371,
+        "image_top_drop": -0.0085,
+        "image_random_drop": -0.001,
+        "text_top_drop": 0.0158,
+        "text_random_drop": -0.0011
+      },
+      {
+        "uid": "fakeddit:test_1380",
+        "baseline": 0.9476,
+        "image_top_drop": -0.0002,
+        "image_random_drop": -0.0014,
+        "text_top_drop": 0.0116,
+        "text_random_drop": 0.0017
+      },
+      {
+        "uid": "fakeddit:test_36",
+        "baseline": 0.3184,
+        "image_top_drop": -0.5959,
+        "image_random_drop": -0.5495,
+        "text_top_drop": 0.1521,
+        "text_random_drop": 0.1521
+      },
+      {
+        "uid": "fakeddit:test_791",
+        "baseline": 0.9437,
+        "image_top_drop": 0.0014,
+        "image_random_drop": 0.0,
+        "text_top_drop": 0.0228,
+        "text_random_drop": 0.0015
+      },
+      {
+        "uid": "fakeddit:test_918",
+        "baseline": 0.9399,
+        "image_top_drop": -0.0024,
+        "image_random_drop": -0.0036,
+        "text_top_drop": 0.0021,
+        "text_random_drop": 0.0021
+      },
+      {
+        "uid": "fakeddit:test_1291",
+        "baseline": 0.7419,
+        "image_top_drop": -0.1963,
+        "image_random_drop": -0.0807,
+        "text_top_drop": 0.4923,
+        "text_random_drop": 0.0384
+      },
+      {
+        "uid": "fakeddit:test_1288",
+        "baseline": 0.9441,
+        "image_top_drop": -0.0063,
+        "image_random_drop": -0.0025,
+        "text_top_drop": 0.0361,
+        "text_random_drop": 0.0018
+      },
+      {
+        "uid": "fakeddit:test_702",
+        "baseline": 0.1402,
+        "image_top_drop": -0.0051,
+        "image_random_drop": -0.0062,
+        "text_top_drop": -0.1366,
+        "text_random_drop": 0.0016
+      },
+      {
+        "uid": "fakeddit:test_1335",
+        "baseline": 0.9474,
+        "image_top_drop": 0.0044,
+        "image_random_drop": 0.0008,
+        "text_top_drop": 0.0062,
+        "text_random_drop": -0.001
+      },
+      {
+        "uid": "fakeddit:test_972",
+        "baseline": 0.9469,
+        "image_top_drop": 0.0133,
+        "image_random_drop": 0.026,
+        "text_top_drop": 0.0074,
+        "text_random_drop": 0.0159
+      },
+      {
+        "uid": "fakeddit:test_1283",
+        "baseline": 0.9417,
+        "image_top_drop": 0.003,
+        "image_random_drop": -0.0013,
+        "text_top_drop": 0.0059,
+        "text_random_drop": 0.0059
+      },
+      {
+        "uid": "fakeddit:test_425",
+        "baseline": 0.9354,
+        "image_top_drop": 0.7051,
+        "image_random_drop": 0.061,
+        "text_top_drop": 0.0115,
+        "text_random_drop": -0.0029
+      },
+      {
+        "uid": "fakeddit:test_839",
+        "baseline": 0.9449,
+        "image_top_drop": -0.0027,
+        "image_random_drop": -0.0025,
+        "text_top_drop": 0.1803,
+        "text_random_drop": 0.001
+      },
+      {
+        "uid": "fakeddit:test_333",
+        "baseline": 0.946,
+        "image_top_drop": -0.0013,
+        "image_random_drop": -0.0012,
+        "text_top_drop": 0.0008,
+        "text_random_drop": -0.0003
+      },
+      {
+        "uid": "fakeddit:test_1141",
+        "baseline": 0.9399,
+        "image_top_drop": -0.005,
+        "image_random_drop": -0.0014,
+        "text_top_drop": 0.012,
+        "text_random_drop": 0.0
+      },
+      {
+        "uid": "fakeddit:test_1282",
+        "baseline": 0.6019,
+        "image_top_drop": 0.1773,
+        "image_random_drop": -0.1832,
+        "text_top_drop": 0.16,
+        "text_random_drop": -0.2579
+      },
+      {
+        "uid": "fakeddit:test_528",
+        "baseline": 0.9437,
+        "image_top_drop": -0.0027,
+        "image_random_drop": -0.0035,
+        "text_top_drop": 0.0026,
+        "text_random_drop": 0.0026
+      },
+      {
+        "uid": "fakeddit:test_1161",
+        "baseline": 0.9364,
+        "image_top_drop": -0.0045,
+        "image_random_drop": -0.0061,
+        "text_top_drop": 0.4288,
+        "text_random_drop": 0.0171
+      },
+      {
+        "uid": "fakeddit:test_573",
+        "baseline": 0.9102,
+        "image_top_drop": -0.0033,
+        "image_random_drop": -0.0292,
+        "text_top_drop": 0.4623,
+        "text_random_drop": -0.0316
+      },
+      {
+        "uid": "fakeddit:test_653",
+        "baseline": 0.9478,
+        "image_top_drop": -0.0019,
+        "image_random_drop": -0.0007,
+        "text_top_drop": 0.0007,
+        "text_random_drop": -0.0005
+      },
+      {
+        "uid": "fakeddit:test_1066",
+        "baseline": 0.9142,
+        "image_top_drop": -0.0077,
+        "image_random_drop": -0.0023,
+        "text_top_drop": 0.0847,
+        "text_random_drop": 0.0266
+      },
+      {
+        "uid": "fakeddit:test_978",
+        "baseline": 0.9434,
+        "image_top_drop": -0.008,
+        "image_random_drop": -0.0062,
+        "text_top_drop": 0.0002,
+        "text_random_drop": -0.0017
+      },
+      {
+        "uid": "fakeddit:test_473",
+        "baseline": 0.9471,
+        "image_top_drop": 0.0035,
+        "image_random_drop": 0.0001,
+        "text_top_drop": 0.0018,
+        "text_random_drop": 0.0015
+      },
+      {
+        "uid": "fakeddit:test_519",
+        "baseline": 0.9237,
+        "image_top_drop": -0.0113,
+        "image_random_drop": -0.0147,
+        "text_top_drop": -0.0003,
+        "text_random_drop": 0.0051
+      },
+      {
+        "uid": "fakeddit:test_186",
+        "baseline": 0.8411,
+        "image_top_drop": -0.1003,
+        "image_random_drop": -0.1051,
+        "text_top_drop": 0.6199,
+        "text_random_drop": 0.6237
+      },
+      {
+        "uid": "fakeddit:test_1070",
+        "baseline": 0.9405,
+        "image_top_drop": -0.0002,
+        "image_random_drop": -0.0013,
+        "text_top_drop": 0.0007,
+        "text_random_drop": -0.0009
+      }
+    ],
+    "image": {
+      "n": 40,
+      "mean_top_deletion_drop": -0.0176,
+      "mean_random_deletion_drop": -0.0372,
+      "faithfulness_gap": 0.0195,
+      "paired_ttest": {
+        "t": 1.028,
+        "p": 0.3103
+      }
+    },
+    "text": {
+      "n": 40,
+      "mean_top_deletion_drop": 0.0684,
+      "mean_random_deletion_drop": 0.014,
+      "faithfulness_gap": 0.0544,
+      "paired_ttest": {
+        "t": 2.482,
+        "p": 0.0175
+      }
+    }
+  }
+]
