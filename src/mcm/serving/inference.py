@@ -108,11 +108,22 @@ def load_bundle(checkpoint_dir: Path | None = None) -> ModelBundle:
     # own device selection only understands "cuda" or CPU, so gpu is always
     # False here — MPS gains nothing from CRAFT's small conv stack anyway, and
     # passing gpu=True on a non-CUDA machine raises rather than falling back.
+    #
+    # download_enabled=False is load-bearing, not an optimization. The
+    # Dockerfile bakes EasyOCR's weights into the image at build time for the
+    # same reason CLIP's and the deepfake detector's are baked in: a cold
+    # start on a service that scales to zero must never depend on the network.
+    # EasyOCR's default (download_enabled=True) silently breaks that guarantee
+    # — any cache miss or checksum mismatch at runtime falls through to a live
+    # download instead of raising, and on Cloud Run that download was observed
+    # to make a single cold start take upwards of ten minutes rather than
+    # failing fast into the same "continuing without it" degradation every
+    # other optional branch here already has.
     if os.getenv("MCM_DISABLE_OCR", "").lower() not in ("1", "true", "yes"):
         try:
             import easyocr
 
-            bundle.ocr = easyocr.Reader(["en"], gpu=False, verbose=False)
+            bundle.ocr = easyocr.Reader(["en"], gpu=False, verbose=False, download_enabled=False)
         except Exception as e:  # noqa: BLE001
             log.warning("OCR reader unavailable (%s); continuing without it", e)
 
