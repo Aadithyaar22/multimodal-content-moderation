@@ -68,6 +68,12 @@ def collect(dataset: str) -> dict[str, list[dict]]:
         if name.startswith("sweep_") or name == "index.json":
             continue
         blob = json.loads(open(path).read())
+        if not isinstance(blob, dict):
+            # results_dir() holds more than training runs now (e.g.
+            # faithfulness.json, a list of per-dataset eval results) — skip
+            # anything that isn't shaped like one rather than assuming every
+            # *.json here is a run.
+            continue
         cfg = blob.get("config", {})
         if cfg.get("datasets") != [dataset]:
             continue
