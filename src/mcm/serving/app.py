@@ -20,6 +20,7 @@ import threading
 import time
 import uuid
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Annotated
 
 import torch
@@ -160,6 +161,80 @@ def _run_ocr(bundle: ModelBundle, pil) -> str | None:
         return None
 
 
+@dataclass
+class ImageReuseResult:
+    checked: bool
+    is_reused: bool
+    similarity: float = 0.0
+    first_seen_item_id: str | None = None
+    first_seen_at: str | None = None
+    first_seen_text: str | None = None
+    reason: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "checked": self.checked,
+            "is_reused": self.is_reused,
+            "similarity": round(self.similarity, 4),
+            "first_seen_item_id": self.first_seen_item_id,
+            "first_seen_at": self.first_seen_at,
+            "first_seen_text": self.first_seen_text,
+            "reason": self.reason,
+        }
+
+
+def _check_image_reuse(
+    bundle: ModelBundle, store: Store, pil, item_id: str, text: str
+) -> ImageReuseResult:
+    """Has this image been analyzed before, possibly under a different claim.
+
+    The flagship misinformation example (PROJECT_CONTEXT Sec. 1, Example B —
+    an old hospital photo captioned as breaking news) is exactly this: image
+    reuse is not a property either classifier can see from a single image, it
+    is a property of the *corpus*, so it has to be checked against one.
+
+    Deliberately informational, not fused into the misinformation score, for
+    the same reason OCR text stays out of the classifier input: "same image,
+    different caption" and "same image, same caption re-shared legitimately"
+    look identical from a similarity score alone, and automating that
+    distinction with confidence this feature has not earned would be a
+    fabricated signal wearing a measured one's clothes. A moderator seeing
+    "this image was first analyzed 3 days ago captioned X" can make that call
+    in a way a threshold cannot.
+
+    Always registers the current image into the index before returning, match
+    or not, so the corpus grows with every analysis — this is what lets
+    reuse detection improve over the life of the deployment rather than only
+    working against a fixed reference set.
+    """
+    if pil is None:
+        return ImageReuseResult(checked=False, is_reused=False, reason="no image supplied")
+    try:
+        with torch.no_grad():
+            px = bundle.clip.preprocess_images([pil]).to(bundle.device)
+            emb = bundle.clip.encode_pooled(pixel_values=px).image_emb[0]
+            emb = torch.nn.functional.normalize(emb, dim=0)
+        embedding = emb.float().cpu().tolist()
+
+        match = store.find_similar_image(embedding)
+        now = utcnow()
+        store.add_image_embedding(item_id, embedding, now, text=text)
+
+        if match is None:
+            return ImageReuseResult(checked=True, is_reused=False)
+        return ImageReuseResult(
+            checked=True,
+            is_reused=True,
+            similarity=match["similarity"],
+            first_seen_item_id=match["item_id"],
+            first_seen_at=match["created_at"],
+            first_seen_text=match["text"],
+        )
+    except Exception:  # noqa: BLE001
+        log.exception("image-reuse check failed")
+        return ImageReuseResult(checked=False, is_reused=False, reason="check error")
+
+
 def _bundle() -> ModelBundle:
     bundle = _state["bundle"]
     if bundle is None:
@@ -263,6 +338,10 @@ async def analyze(
     ocr_text = _run_ocr(bundle, pil) if run_ocr else None
     timings["ocr"] = int((time.perf_counter() - ocr_started) * 1000)
 
+    reuse_started = time.perf_counter()
+    image_reuse = _check_image_reuse(bundle, _store, pil, item_id, text or "")
+    timings["image_reuse"] = int((time.perf_counter() - reuse_started) * 1000)
+
     # The reported verdict follows whichever head scored highest; that is the
     # reason the item is in the queue at all.
     lead_task = max(per_task, key=lambda t: per_task[t].fusion)
@@ -337,6 +416,7 @@ async def analyze(
         },
         "deepfake": deepfake.to_dict(),
         "manipulation_flagged": manipulated,
+        "image_reuse": image_reuse.to_dict(),
         "explanation_status": "pending",
         "latency_ms": timings,
         "explanation": None,

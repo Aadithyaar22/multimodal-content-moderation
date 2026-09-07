@@ -80,6 +80,25 @@ class DeepfakeResult(BaseModel):
     face_confidence: float | None = None
 
 
+class ImageReuse(BaseModel):
+    """Has this image been analyzed before, possibly under a different claim.
+
+    Deliberately informational, the same as DeepfakeResult and OcrText: this
+    is a similarity signal, not a fused prediction. "Same image, different
+    caption" and "same image, legitimately re-shared" are indistinguishable
+    from a similarity score alone; a moderator reading first_seen_text next
+    to the current caption can make that call, a fixed threshold cannot.
+    """
+
+    checked: bool
+    is_reused: bool
+    similarity: float = 0.0
+    first_seen_item_id: str | None = None
+    first_seen_at: str | None = None
+    first_seen_text: str | None = None
+    reason: str | None = None
+
+
 class AnalysisResult(BaseModel):
     item_id: str
     created_at: str
@@ -94,6 +113,7 @@ class AnalysisResult(BaseModel):
     #: loudest head — see the note where this is computed in app.py.
     active_heads: list[str] = Field(default_factory=list)
     deepfake: DeepfakeResult
+    image_reuse: ImageReuse
     explanation_status: ExplanationStatus
     latency_ms: dict[str, int]
 

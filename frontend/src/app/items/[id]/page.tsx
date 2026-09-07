@@ -175,6 +175,21 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
                 </p>
               </div>
             )}
+            {item.image_reuse.checked && item.image_reuse.is_reused && (
+              <div className="border-t border-[var(--color-glass-border)] pt-4">
+                <div className="flex items-baseline justify-between">
+                  <span className="label-tech text-outline">Image seen before</span>
+                  <span className="numeric font-display font-bold">
+                    {(item.image_reuse.similarity * 100).toFixed(0)}% match
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-outline">
+                  First seen {item.image_reuse.first_seen_at} with the caption
+                  &ldquo;{item.image_reuse.first_seen_text}&rdquo;. Informational
+                  only — this does not change the verdict above.
+                </p>
+              </div>
+            )}
           </div>
         </GlassPanel>
       </div>
