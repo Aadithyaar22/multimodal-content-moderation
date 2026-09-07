@@ -92,6 +92,8 @@ export interface Explanation {
     modality: "text" | "image" | "cross";
     factor: string;
     weight: number;
+    /** Which head this factor belongs to — group by this once length > 1. */
+    head: "toxicity" | "misinformation";
   }>;
   model: string | null;
   generated_at: string | null;

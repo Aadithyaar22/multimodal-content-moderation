@@ -21,6 +21,7 @@ import {
   EmergentBadge,
   GlassPanel,
   HeadBadges,
+  KeyFactorList,
   Skeleton,
   VerdictBadge,
 } from "@/components/ui";
@@ -213,24 +214,7 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
               {explanation.narrative}
             </p>
             {explanation.key_factors.length > 0 && (
-              <ul className="mt-6 space-y-2">
-                {explanation.key_factors.map((f) => (
-                  <li
-                    key={f.factor}
-                    className="flex items-center justify-between border-l-2 border-on-surface bg-[rgba(255,255,255,0.05)] px-4 py-3"
-                  >
-                    <span className="text-sm">
-                      <span className="label-tech mr-3 text-outline">
-                        {f.modality}
-                      </span>
-                      {f.factor}
-                    </span>
-                    <span className="numeric font-display text-sm font-bold">
-                      {f.weight.toFixed(2)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <KeyFactorList factors={explanation.key_factors} />
             )}
             <p className="label-tech mt-6 text-outline">
               {explanation.model} · {explanation.latency_ms}ms

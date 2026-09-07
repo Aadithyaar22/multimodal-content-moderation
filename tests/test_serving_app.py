@@ -282,6 +282,51 @@ class TestActiveHeads:
         by_toxicity = client.get("/api/v1/queue", params={"head": "toxicity"}).json()
         assert body["item_id"] not in [i["item_id"] for i in by_toxicity["items"]]
 
+    def test_explanation_is_built_from_every_active_head_not_just_top_head(
+        self, client, monkeypatch
+    ):
+        """get_explanation used to build its prompt from record["top_head"]
+        alone. Reproduces the real example end to end: toxicity=0.76 (harmful)
+        clears threshold but misinformation=0.94 is higher and would be
+        top_head — the explanation payload must still describe both."""
+        two_task_bundle = FakeBundle()
+        two_task_bundle.tasks = ["misinformation", "toxicity"]
+        two_task_bundle.arms = {"misinformation": {}, "toxicity": {}}
+        monkeypatch.setitem(app_module._state, "bundle", two_task_bundle)
+
+        def scored(bundle, task, image, text):
+            fusion = {"toxicity": 0.76, "misinformation": 0.94}[task]
+            probs = (
+                {"benign": 1 - fusion, "harmful": fusion}
+                if task == "toxicity"
+                else {"true": 1 - fusion, "satire": fusion, "misleading": 0.0}
+            )
+            arms = ArmOutputs(cv_only=fusion, nlp_only=fusion, fusion=fusion, fusion_probs=probs)
+            return arms, {"encode": 1}
+
+        monkeypatch.setattr(app_module, "run_arms", scored)
+
+        captured = {}
+
+        def fake_generate(payload, timeout=20.0):
+            captured.update(payload)
+            return {
+                "status": "ready",
+                "narrative": "stub",
+                "key_factors": [],
+                "model": "stub-model",
+                "latency_ms": 1,
+            }
+
+        monkeypatch.setattr(app_module.explain_mod, "generate", fake_generate)
+
+        item_id = client.post("/api/v1/analyze", data={"text": "hi"}).json()["item_id"]
+        client.get(f"/api/v1/items/{item_id}/explanation")
+
+        assert set(captured["heads"]) == {"toxicity", "misinformation"}
+        assert captured["heads"]["toxicity"]["modality_scores"]["fusion"] == 0.76
+        assert captured["heads"]["misinformation"]["modality_scores"]["fusion"] == 0.94
+
 
 class TestRateLimit:
     def test_blocks_after_the_configured_window(self, client, monkeypatch):

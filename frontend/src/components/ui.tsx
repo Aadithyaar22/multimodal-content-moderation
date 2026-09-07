@@ -7,7 +7,7 @@
  */
 
 import type { ReactNode } from "react";
-import type { VerdictLabel } from "@/lib/types";
+import type { Explanation, VerdictLabel } from "@/lib/types";
 
 export function GlassPanel({
   title,
@@ -63,7 +63,7 @@ export function EmergentBadge() {
   );
 }
 
-const HEAD_LABEL: Record<"toxicity" | "misinformation", string> = {
+export const HEAD_LABEL: Record<"toxicity" | "misinformation", string> = {
   toxicity: "Harassment",
   misinformation: "Misinformation",
 };
@@ -96,6 +96,52 @@ export function HeadBadges({
         </span>
       ))}
     </>
+  );
+}
+
+/**
+ * Structured explanation factors, grouped by head once more than one is
+ * present.
+ *
+ * A flat list keyed on `factor` alone breaks the moment a second head is
+ * active — "vision-only signal" appears once per head, so the same string
+ * collides as a React key and, worse, reads as one undifferentiated pile of
+ * numbers instead of two separate cases for review. Group headers only
+ * appear when there is more than one head, so the common single-head case
+ * stays exactly as compact as before.
+ */
+export function KeyFactorList({ factors }: { factors: Explanation["key_factors"] }) {
+  const heads = Array.from(new Set(factors.map((f) => f.head)));
+  const grouped = heads.length > 1;
+
+  return (
+    <div className="mt-6 space-y-5">
+      {heads.map((head) => (
+        <div key={head}>
+          {grouped && (
+            <p className="label-tech mb-2 text-outline">{HEAD_LABEL[head]}</p>
+          )}
+          <ul className="space-y-2">
+            {factors
+              .filter((f) => f.head === head)
+              .map((f) => (
+                <li
+                  key={`${f.head}-${f.factor}`}
+                  className="flex items-center justify-between border-l-2 border-on-surface bg-[rgba(255,255,255,0.05)] px-4 py-3"
+                >
+                  <span className="text-sm">
+                    <span className="label-tech mr-3 text-outline">{f.modality}</span>
+                    {f.factor}
+                  </span>
+                  <span className="numeric font-display text-sm font-bold">
+                    {f.weight.toFixed(2)}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 

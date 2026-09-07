@@ -19,7 +19,14 @@ import type { ItemDetail } from "@/lib/types";
 import { useAsyncResource } from "@/hooks/useAsyncResource";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
-import { EmergentBadge, GlassPanel, HeadBadges, Skeleton, VerdictBadge } from "@/components/ui";
+import {
+  EmergentBadge,
+  GlassPanel,
+  HeadBadges,
+  KeyFactorList,
+  Skeleton,
+  VerdictBadge,
+} from "@/components/ui";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -280,9 +287,14 @@ export default function AnalyzePage() {
                 </button>
               </div>
             ) : explanation && explanation.status === "ready" && explanation.narrative ? (
-              <p className="font-editorial text-lg leading-relaxed text-on-surface">
-                {explanation.narrative}
-              </p>
+              <>
+                <p className="font-editorial text-lg leading-relaxed text-on-surface">
+                  {explanation.narrative}
+                </p>
+                {explanation.key_factors.length > 0 && (
+                  <KeyFactorList factors={explanation.key_factors} />
+                )}
+              </>
             ) : (
               <p className="text-sm text-on-surface-variant">
                 No narrative available. The scores above are unaffected.

@@ -131,9 +131,9 @@ const EXPLANATIONS: Record<string, Explanation> = {
     narrative:
       "The caption's playful framing — 'a little gift', a laughing emoji — sits against footage of someone approaching a private doorway while filming covertly. Neither element is objectionable alone: the language reads as friendly banter, and the imagery shows no violence. Together they match a harassment pattern, where the sarcasm reframes a covert approach to someone's home as intimidation rather than a favour.",
     key_factors: [
-      { modality: "text", factor: "sarcastic minimiser ('little gift')", weight: 0.34 },
-      { modality: "image", factor: "covert approach to a residence", weight: 0.29 },
-      { modality: "cross", factor: "tone contradicts depicted action", weight: 0.37 },
+      { modality: "text", factor: "sarcastic minimiser ('little gift')", weight: 0.34, head: "toxicity" },
+      { modality: "image", factor: "covert approach to a residence", weight: 0.29, head: "toxicity" },
+      { modality: "cross", factor: "tone contradicts depicted action", weight: 0.37, head: "toxicity" },
     ],
     model: "gemini-2.5-flash",
     generated_at: ago(400),
@@ -145,13 +145,39 @@ const EXPLANATIONS: Record<string, Explanation> = {
     narrative:
       "The image is a crowded hospital corridor, presented as current evidence of a policy's effect. Reverse-embedding search places the same photograph in circulation roughly eight months ago, so the claim of immediacy is not supported by the image itself. The caption additionally carries urgency-pressure phrasing ('share before they delete this'), a known distribution marker rather than a claim about the facts.",
     key_factors: [
-      { modality: "image", factor: "image predates the claimed event", weight: 0.41 },
-      { modality: "text", factor: "urgency-pressure framing", weight: 0.28 },
-      { modality: "cross", factor: "old image asserted as current", weight: 0.31 },
+      { modality: "image", factor: "image predates the claimed event", weight: 0.41, head: "misinformation" },
+      { modality: "text", factor: "urgency-pressure framing", weight: 0.28, head: "misinformation" },
+      { modality: "cross", factor: "old image asserted as current", weight: 0.31, head: "misinformation" },
     ],
     model: "gemini-2.5-flash",
     generated_at: ago(1160),
     latency_ms: 2870,
+  },
+  // Demonstrates the active_heads fix end to end: real production example
+  // where toxicity independently clears threshold (0.76, harmful) while
+  // misinformation reads higher (0.94) — a top_head-only narrative would have
+  // discussed only the second. The narrative addresses both explicitly, and
+  // key_factors carries both heads' numbers rather than dropping one.
+  itm_slur_03: {
+    item_id: "itm_slur_03",
+    status: "ready",
+    narrative:
+      "This item is flagged on two independent grounds. The caption itself reads as targeted harassment — 'go back to where you came from, nobody wants you here' — and scores harmful at 0.76 on that basis alone. Separately, the same post is flagged as misleading at 0.94, the stronger of the two signals here. Both should be treated as genuine findings: the harassment reading is not incidental to the misinformation case, and a review that only addresses the higher score would miss it.",
+    key_factors: [
+      { modality: "image", factor: "vision-only signal", weight: 0.73, head: "toxicity" },
+      { modality: "text", factor: "language-only signal", weight: 0.81, head: "toxicity" },
+      { modality: "image", factor: "vision-only signal", weight: 0.62, head: "misinformation" },
+      { modality: "text", factor: "language-only signal", weight: 0.55, head: "misinformation" },
+      {
+        modality: "cross",
+        factor: "gain from modelling the pair jointly",
+        weight: 0.13,
+        head: "misinformation",
+      },
+    ],
+    model: "gemini-2.5-flash",
+    generated_at: ago(2000),
+    latency_ms: 4210,
   },
 };
 

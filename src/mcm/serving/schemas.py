@@ -102,6 +102,12 @@ class KeyFactor(BaseModel):
     modality: Literal["text", "image", "cross"]
     factor: str
     weight: float
+    #: Which head this factor is about. An item can be flagged on more than
+    #: one independent ground (toxicity and misinformation each clearing their
+    #: own threshold); this is what lets a client group factors correctly
+    #: instead of presenting a second head's numbers as if they belonged to
+    #: the first.
+    head: str
 
 
 class Explanation(BaseModel):
