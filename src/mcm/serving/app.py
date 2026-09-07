@@ -345,16 +345,28 @@ def get_explanation(item_id: str) -> Explanation:
     if cached and cached.get("status") == "ready":
         return Explanation(**cached)
 
-    task = record["top_head"]
+    # Every head that independently cleared threshold, not just top_head. An
+    # item scoring toxicity=0.76 (harmful) and misinformation=0.94 (misleading)
+    # is two separate reasons to look at it; a prompt built from top_head alone
+    # would only ever ask the model to discuss the one that happened to score
+    # higher, which is the same blind spot the /queue head filter had before
+    # active_heads existed. Falls back to [top_head] for a record that
+    # predates the field (a stale MongoDB document, in practice).
+    active = record.get("active_heads") or [record["top_head"]]
     result = explain_mod.generate(
         {
-            "task": task,
+            "heads": {
+                task: {
+                    "label": record["heads"][task]["label"],
+                    "modality_scores": {
+                        k: record["modality_scores"][k].get(task, 0.0)
+                        for k in ("cv_only", "nlp_only", "fusion")
+                    },
+                }
+                for task in active
+            },
             "text": record["input"]["text"],
             "has_image": record["input"]["has_image"],
-            "modality_scores": {
-                k: record["modality_scores"][k].get(task, 0.0)
-                for k in ("cv_only", "nlp_only", "fusion")
-            },
             "threshold": THRESHOLD,
             "is_emergent": record["fusion_signal"]["is_emergent"],
         }

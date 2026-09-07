@@ -20,6 +20,8 @@ from mcm.utils.logging import get_logger
 
 log = get_logger(__name__)
 
+HEAD_NAME = {"toxicity": "harassment/hate-speech", "misinformation": "misinformation"}
+
 SYSTEM_PROMPT = """You explain the output of a multimodal content-moderation model to a human moderator.
 
 You are given scores the model already computed. Your job is to explain what \
@@ -32,32 +34,52 @@ that is uncertain, and your language must read as uncertain.
 - When the item is emergent (both single-modality scores low, fused score high), \
 say plainly what the image and the caption each contribute and why they matter \
 together. That relationship is the finding.
+- This item may be flagged on more than one independent ground — for instance \
+both harassment and misinformation can each clear their own threshold on the \
+same item. When more than one is listed below, address EACH one specifically, \
+in proportion to how strongly it scored. Do not silently drop any of them or \
+imply only the first is real: a moderator who reads your summary and misses a \
+genuine harassment concern because you only discussed misinformation has been \
+actively misled, not just given an incomplete answer.
 - Do not moralise, and do not address the person who posted. You are writing for \
 a moderator who will decide.
-- Three or four sentences. Plain English. No headings, no bullet points."""
+- Plain English. No headings, no bullet points. Three or four sentences if there \
+is one concern; up to six if there is more than one — do not pad length when \
+there is only one thing to say."""
 
 
 def _user_prompt(payload: dict[str, Any]) -> str:
-    m = payload["modality_scores"]
-    task = payload["task"]
+    heads: dict[str, dict[str, Any]] = payload["heads"]
     lines = [
-        f"Task: {task}",
         f"Caption: {payload['text'] or '(none)'}",
         f"Image present: {payload['has_image']}",
-        "",
-        f"Vision-only score: {m['cv_only']:.2f}",
-        f"Language-only score: {m['nlp_only']:.2f}",
-        f"Fused score: {m['fusion']:.2f}",
         f"Threshold: {payload['threshold']:.2f}",
+        "",
     ]
+
+    if len(heads) > 1:
+        lines.append(
+            f"This item is flagged on {len(heads)} independent grounds — "
+            "address every one of them below, not just the strongest."
+        )
+        lines.append("")
+
+    for task, h in heads.items():
+        m = h["modality_scores"]
+        lines.append(f"[{HEAD_NAME.get(task, task)}] predicted: {h['label']}")
+        lines.append(f"  Vision-only score: {m['cv_only']:.2f}")
+        lines.append(f"  Language-only score: {m['nlp_only']:.2f}")
+        lines.append(f"  Fused score: {m['fusion']:.2f}")
+        lines.append("")
+
     if payload.get("is_emergent"):
         lines.append(
-            "\nThis item is EMERGENT: neither modality alone crosses the "
+            "This item is EMERGENT: neither modality alone crosses the "
             "threshold, but the fused score does."
         )
     if payload.get("top_tokens"):
         lines.append(
-            "\nMost influential caption tokens: "
+            "Most influential caption tokens: "
             + ", ".join(f"{t}({s:+.2f})" for t, s in payload["top_tokens"])
         )
     if payload.get("regions"):
@@ -161,20 +183,38 @@ def _key_factors(payload: dict[str, Any]) -> list[dict[str, Any]]:
     """Structured factors, derived from the computed scores rather than the LLM.
 
     These are the numbers themselves, so they stay correct and available even
-    when no narrative could be generated.
+    when no narrative could be generated. One triplet per active head — a
+    two-head item gets two independent sets of factors, tagged so the UI can
+    group them, rather than the second head's numbers being dropped the way
+    they were before every head in payload["heads"] was included here.
     """
-    m = payload["modality_scores"]
-    factors = [
-        {"modality": "image", "factor": "vision-only signal", "weight": round(m["cv_only"], 3)},
-        {"modality": "text", "factor": "language-only signal", "weight": round(m["nlp_only"], 3)},
-    ]
-    delta = m["fusion"] - max(m["cv_only"], m["nlp_only"])
-    if delta > 0:
+    factors: list[dict[str, Any]] = []
+    for task, h in payload["heads"].items():
+        m = h["modality_scores"]
         factors.append(
             {
-                "modality": "cross",
-                "factor": "gain from modelling the pair jointly",
-                "weight": round(delta, 3),
+                "modality": "image",
+                "factor": "vision-only signal",
+                "weight": round(m["cv_only"], 3),
+                "head": task,
             }
         )
+        factors.append(
+            {
+                "modality": "text",
+                "factor": "language-only signal",
+                "weight": round(m["nlp_only"], 3),
+                "head": task,
+            }
+        )
+        delta = m["fusion"] - max(m["cv_only"], m["nlp_only"])
+        if delta > 0:
+            factors.append(
+                {
+                    "modality": "cross",
+                    "factor": "gain from modelling the pair jointly",
+                    "weight": round(delta, 3),
+                    "head": task,
+                }
+            )
     return factors

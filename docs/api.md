@@ -174,11 +174,13 @@ The slow half. Call immediately after `/analyze` returns.
 {
   "item_id": "itm_01J8XQ2K3M",
   "status": "ready",
-  "narrative": "The caption's playful framing ('a little gift', laughing emoji) sits against footage of someone approaching a private doorway while filming covertly. Neither element is alone objectionable, but together they match a harassment-prank pattern: the sarcasm reframes the covert delivery as intimidation.",
+  "narrative": "This item is flagged on two independent grounds. The caption reads as harassment on its own — 'go back to where you came from' — and the model scores it harmful at 0.76. Separately, the same post is flagged as misleading at 0.94, the stronger of the two signals. Both should be treated as real concerns rather than the harassment reading being incidental to a misinformation case.",
   "key_factors": [
-    { "modality": "text", "factor": "sarcastic minimizer", "weight": 0.34 },
-    { "modality": "image", "factor": "covert approach to residence", "weight": 0.29 },
-    { "modality": "cross", "factor": "tone/action mismatch", "weight": 0.37 }
+    { "modality": "image", "factor": "vision-only signal", "weight": 0.73, "head": "toxicity" },
+    { "modality": "text", "factor": "language-only signal", "weight": 0.81, "head": "toxicity" },
+    { "modality": "image", "factor": "vision-only signal", "weight": 0.62, "head": "misinformation" },
+    { "modality": "text", "factor": "language-only signal", "weight": 0.55, "head": "misinformation" },
+    { "modality": "cross", "factor": "gain from modelling the pair jointly", "weight": 0.13, "head": "misinformation" }
   ],
   "model": "gemini-2.5-flash",
   "generated_at": "2026-08-21T09:14:26Z",
@@ -189,6 +191,14 @@ The slow half. Call immediately after `/analyze` returns.
 `status` is one of `pending` | `ready` | `failed` | `unavailable`. On `failed`,
 render the scores and attribution maps without the narrative — the verdict does
 not depend on the LLM.
+
+**`key_factors` covers every entry in `active_heads`, not just `top_head`.**
+Each factor's `head` says which one it belongs to. This example is the same
+real case `active_heads` itself was fixed for: toxicity clears threshold at
+0.76 (harassment) while misinformation reads higher at 0.94 — both are genuine
+findings, and the narrative is instructed to discuss each one it is given, not
+just the strongest. Group `key_factors` by `head` in the UI rather than
+rendering them as one flat list once there is more than one head present.
 
 ---
 
