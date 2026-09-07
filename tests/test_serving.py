@@ -198,6 +198,175 @@ class TestStore:
         assert stats["model"]["agreement_rate"] == 0.0
 
 
+class _FakeCursor:
+    """Just enough of pymongo's Cursor for Store's own call sites: chained
+    .sort().skip().limit(), and plain iteration when none of those are
+    called (as in find_similar_image's `list(collection.find(...))`)."""
+
+    def __init__(self, docs: list[dict]):
+        self._docs = docs
+
+    def sort(self, field, direction):
+        self._docs = sorted(self._docs, key=lambda d: d.get(field, 0), reverse=direction == -1)
+        return self
+
+    def skip(self, n):
+        self._docs = self._docs[n:]
+        return self
+
+    def limit(self, n):
+        self._docs = self._docs[:n]
+        return self
+
+    def __iter__(self):
+        return iter(self._docs)
+
+
+class FakeMongoCollection:
+    """Minimal in-memory stand-in for the pymongo Collection surface Store
+    actually calls. A real MongoClient needs a live server and has no place
+    in a unit test; this mirrors the same deterministic-fake approach as
+    FakeOcrReader below and _FakeClipForReuse in test_serving_app.py — it
+    tests that Store drives pymongo the way it means to, not pymongo itself,
+    which is someone else's well-tested library.
+    """
+
+    def __init__(self):
+        self.docs: dict[str, dict] = {}
+
+    def create_index(self, *args, **kwargs):
+        pass
+
+    def replace_one(self, filt, doc, upsert=False):
+        self.docs[filt["item_id"]] = dict(doc)
+
+    def find_one(self, filt, projection=None):
+        doc = self.docs.get(filt["item_id"])
+        return dict(doc) if doc is not None else None
+
+    def update_one(self, filt, update):
+        key = filt["item_id"]
+        if key in self.docs:
+            self.docs[key].update(update.get("$set", {}))
+
+    @staticmethod
+    def _matches(doc: dict, query: dict) -> bool:
+        for key, want in query.items():
+            have = doc.get(key)
+            if isinstance(want, dict) and "$gte" in want:
+                if have is None or have < want["$gte"]:
+                    return False
+            elif isinstance(have, list):
+                # Mongo's equality match against an array field is an
+                # implicit "any element equals this" — the same semantics
+                # Store.query relies on for the active_heads filter.
+                if want not in have:
+                    return False
+            elif have != want:
+                return False
+        return True
+
+    def find(self, query=None, projection=None):
+        query = query or {}
+        return _FakeCursor([dict(d) for d in self.docs.values() if self._matches(d, query)])
+
+    def count_documents(self, query=None):
+        query = query or {}
+        return sum(1 for d in self.docs.values() if self._matches(d, query))
+
+
+def _mongo_store() -> Store:
+    """A Store wired to fake Mongo collections instead of a real MongoClient.
+
+    Bypasses __init__'s connection attempt entirely (uri="") and substitutes
+    the private collection attributes directly — this is testing Store's own
+    branch logic (`if self._collection is not None`), not pymongo's wire
+    protocol, so there is nothing to gain from a real network round trip.
+    """
+    s = Store(uri="")
+    s._collection = FakeMongoCollection()
+    s._image_collection = FakeMongoCollection()
+    return s
+
+
+class TestStoreMongoBackend:
+    """Everything in TestStore above only ever exercised the in-memory
+    fallback (Store(uri="")'s default). Nothing had run the `if
+    self._collection is not None` branch of a single Store method until now
+    — a real MongoDB-backed deployment was flying on zero test coverage of
+    its own code path."""
+
+    def test_backend_reports_mongodb(self):
+        assert _mongo_store().backend == "mongodb"
+
+    def test_round_trip(self):
+        s = _mongo_store()
+        s.put({"item_id": "a", "status": "pending", "priority_score": 0.5})
+        assert s.get("a")["priority_score"] == 0.5
+
+    def test_update_patches_in_place(self):
+        s = _mongo_store()
+        s.put({"item_id": "a", "status": "pending", "priority_score": 0.5})
+        s.update("a", {"status": "resolved"})
+        assert s.get("a")["status"] == "resolved"
+
+    def test_queue_ranks_by_priority(self):
+        s = _mongo_store()
+        for i, p in enumerate([0.1, 0.9, 0.5]):
+            s.put({"item_id": str(i), "status": "pending", "priority_score": p})
+        items, total = s.query()
+        assert [i["item_id"] for i in items] == ["1", "2", "0"]
+        assert total == 3
+
+    def test_head_filter_matches_active_heads(self):
+        s = _mongo_store()
+        s.put(
+            {
+                "item_id": "both",
+                "status": "pending",
+                "priority_score": 0.9,
+                "active_heads": ["misinformation", "toxicity"],
+            }
+        )
+        s.put(
+            {
+                "item_id": "misinfo_only",
+                "status": "pending",
+                "priority_score": 0.8,
+                "active_heads": ["misinformation"],
+            }
+        )
+        items, _ = s.query(head="toxicity")
+        assert [i["item_id"] for i in items] == ["both"]
+
+    def test_count_pending_ignores_query_filters(self):
+        """The same split that test_serving_app.py's queue tests pin for the
+        in-memory backend — the Mongo branch computes this with its own
+        count_documents({"status": "pending"}) call, independently."""
+        s = _mongo_store()
+        s.put({"item_id": "a", "status": "pending", "priority_score": 0.5})
+        s.put({"item_id": "b", "status": "resolved", "priority_score": 0.5})
+        assert s.count_pending() == 1
+
+    def test_image_reuse_round_trip(self):
+        s = _mongo_store()
+        s.add_image_embedding("first", [1.0, 0.0, 0.0], "2026-01-01T00:00:00Z", text="original")
+        match = s.find_similar_image([0.99, 0.01, 0.0], threshold=0.9)
+        assert match is not None
+        assert match["item_id"] == "first"
+        assert match["text"] == "original"
+
+    def test_image_reuse_below_threshold_is_no_match(self):
+        s = _mongo_store()
+        s.add_image_embedding("first", [1.0, 0.0, 0.0], "2026-01-01T00:00:00Z", text="original")
+        assert s.find_similar_image([0.0, 1.0, 0.0], threshold=0.9) is None
+
+    def test_aggregate_stats_reads_from_mongo(self):
+        s = _mongo_store()
+        s.put({"item_id": "a", "status": "resolved", "agreed_with_model": True})
+        assert s.aggregate_stats()["model"]["agreement_rate"] == 1.0
+
+
 class FakeOcrReader:
     """Minimal stand-in for easyocr.Reader — a real one costs a 94MB model
     download and ~2s init, which has no place in a unit test."""
