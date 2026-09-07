@@ -172,6 +172,52 @@ gcloud run services update vanguard-moderation-api --region=asia-south1 \
   --update-env-vars=GEMINI_API_KEY=your-key-here
 ```
 
+### Persisting decisions past a restart (`MONGODB_URI`)
+
+Without this, `Store` falls back to an in-memory dict (`src/mcm/serving/store.py`)
+that is silently wiped on every deploy, every scale-to-zero, and every crash —
+fine for a demo, but it means the queue and the moderator-agreement stats
+(`GET /stats`) start from nothing each time. The `Store.backend` property and a
+`/health` check will both report `"memory"` until this is set; `mongodb` once it
+is. `Store`'s Mongo-backed code path (`_collection`/`_image_collection`) is
+covered by `tests/test_serving.py::TestStoreMongoBackend` — the wiring below is
+what's untested, since it needs a real database this project cannot provision on
+its own.
+
+This requires an account only you can create — MongoDB Atlas needs your own
+email and payment-free signup, and the connection string is a credential this
+assistant will not enter anywhere. Steps to run yourself:
+
+1. Create a free account at [mongodb.com/cloud/atlas/register](https://mongodb.com/cloud/atlas/register)
+   and a free **M0** cluster (512MB, no card required).
+2. Under **Database Access**, add a database user with a generated password.
+3. Under **Network Access**, add `0.0.0.0/0` — Cloud Run's outbound IPs aren't
+   static, so anything narrower will intermittently reject the service.
+4. From the cluster's **Connect** button, copy the `mongodb+srv://...` string
+   and substitute in your database user's username and password.
+5. Wire it into the live service yourself:
+
+```bash
+gcloud run services update vanguard-moderation-api --region=asia-south1 \
+  --update-env-vars=MONGODB_URI="mongodb+srv://<user>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority"
+```
+
+Verify it took by checking `Store.backend` came up as `"mongodb"`:
+
+```bash
+curl -s https://<your-service-url>/api/v1/health | python3 -c "import sys,json; print(json.load(sys.stdin))"
+```
+
+`/health`'s response doesn't currently surface the store backend directly — the
+fastest confirmation is submitting one `/analyze` request, restarting the
+service (`gcloud run services update ... --update-env-vars=_FORCE=1` to force a
+new revision, or just wait for a scale-to-zero cycle), and confirming the item
+is still retrievable via `GET /items/{item_id}` afterwards. If it's gone, the
+URI wasn't picked up — check the service's env vars with
+`gcloud run services describe vanguard-moderation-api --region=asia-south1 --format=json`
+and confirm `MONGODB_URI` is present and the cluster's Network Access list
+includes `0.0.0.0/0`.
+
 If an explanation returns `"unavailable"` with a key set and the deployed image
 predates this note, check that `deploy/requirements-serve.txt` actually installs
 `google-genai` and `groq` — the Dockerfile builds with `pip install --no-deps -e .`,
