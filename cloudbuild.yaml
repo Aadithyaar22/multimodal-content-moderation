@@ -78,6 +78,21 @@ steps:
       # One in-flight request per instance. Each holds CLIP plus six heads, and
       # concurrent requests on one instance contend for the same 2 vCPU.
       - --concurrency=4
+      # Cloud Run's default only allocates CPU while a request is being
+      # handled; a background thread (this service's own model-loading thread
+      # — app.py's lifespan handler starts it explicitly so /health can answer
+      # instantly instead of blocking on load) gets throttled to near-zero
+      # between requests. Verified directly: a cold instance's load thread sat
+      # for minutes doing nothing between log lines, and only inched forward
+      # in bursts that lined up with incoming health-check requests supplying
+      # it a moment of CPU. --no-cpu-throttling ("CPU is always allocated" in
+      # the console) removes that starvation, which is what actually explains
+      # cold starts far past the ~14s figure above — this had been
+      # misattributed to slow individual loaders (EasyOCR's default
+      # network-download fallback, fixed separately in inference.py) before
+      # the throttling itself was identified as the real bottleneck. Billed
+      # only while an instance is up; min-instances=0 still scales to zero.
+      - --no-cpu-throttling
       # --update-env-vars merges; --set-env-vars replaces the service's entire
       # environment. Every rebuild through this file used --set-env-vars here
       # for months, and it worked only by accident, because until this session
