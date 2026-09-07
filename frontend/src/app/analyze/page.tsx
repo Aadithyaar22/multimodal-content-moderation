@@ -260,6 +260,16 @@ export default function AnalyzePage() {
             />
           </div>
 
+          {result.input.ocr_text && (
+            <GlassPanel title="Text detected in image">
+              <p className="text-on-surface">{result.input.ocr_text}</p>
+              <p className="label-tech mt-3 text-outline">
+                Extracted for your reference only — not merged into the
+                caption the classifiers scored.
+              </p>
+            </GlassPanel>
+          )}
+
           {attributions?.text && (
             <GlassPanel title="Token attribution (SHAP)">
               <ShapTokens tokens={attributions.text.tokens} />

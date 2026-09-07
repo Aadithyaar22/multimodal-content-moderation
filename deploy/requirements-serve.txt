@@ -26,3 +26,13 @@ pymongo>=4.8
 # only a genuinely absent package should no longer be the cause.
 google-genai>=0.3
 groq>=0.11
+
+# OCR (mcm.serving.inference's optional reader). NOT declared in pyproject.toml
+# at all — it lives only in the [cv] extra, which the image never installs.
+# Adding it here, in the file the build actually consults, from the start,
+# rather than repeating the exact google-genai/groq mistake above: declaring a
+# runtime import somewhere this file does not read from produces a working
+# local dev environment and a deployed image that silently degrades to
+# ocr_text=None on every request, indistinguishable from OCR being turned off
+# on purpose.
+easyocr>=1.7

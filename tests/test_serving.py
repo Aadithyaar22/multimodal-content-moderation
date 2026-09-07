@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+from mcm.serving.app import _run_ocr
 from mcm.serving.inference import (
     EMERGENT_MARGIN,
     THRESHOLD,
@@ -195,3 +196,48 @@ class TestStore:
         stats = Store(uri="").aggregate_stats()
         assert stats["queue"]["pending"] == 0
         assert stats["model"]["agreement_rate"] == 0.0
+
+
+class FakeOcrReader:
+    """Minimal stand-in for easyocr.Reader — a real one costs a 94MB model
+    download and ~2s init, which has no place in a unit test."""
+
+    def __init__(self, texts: list[str] | None = None, raises: bool = False):
+        self._texts = texts if texts is not None else ["hello", "world"]
+        self._raises = raises
+
+    def readtext(self, image, detail=0):
+        if self._raises:
+            raise RuntimeError("simulated OCR failure")
+        return list(self._texts)
+
+
+class FakeBundleForOcr:
+    """Just enough of ModelBundle for _run_ocr's bookkeeping."""
+
+    def __init__(self, ocr=None):
+        self.ocr = ocr
+
+
+class TestRunOcr:
+    def test_returns_none_when_reader_not_loaded(self):
+        assert _run_ocr(FakeBundleForOcr(ocr=None), object()) is None
+
+    def test_returns_none_when_no_image(self):
+        assert _run_ocr(FakeBundleForOcr(ocr=FakeOcrReader()), None) is None
+
+    def test_joins_detected_lines(self):
+        bundle = FakeBundleForOcr(ocr=FakeOcrReader(["GIFT", "INCOMING"]))
+        assert _run_ocr(bundle, object()) == "GIFT INCOMING"
+
+    def test_empty_detection_is_none_not_empty_string(self):
+        """An image with no text must read as 'nothing detected', not as an
+        empty-but-present string a client would render as a blank line."""
+        bundle = FakeBundleForOcr(ocr=FakeOcrReader([]))
+        assert _run_ocr(bundle, object()) is None
+
+    def test_degrades_to_none_on_failure_rather_than_raising(self):
+        """OCR is auxiliary — the same contract as the deepfake branch. An
+        error here must never take the whole /analyze request down with it."""
+        bundle = FakeBundleForOcr(ocr=FakeOcrReader(raises=True))
+        assert _run_ocr(bundle, object()) is None

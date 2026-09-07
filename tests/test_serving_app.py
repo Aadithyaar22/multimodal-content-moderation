@@ -35,6 +35,7 @@ class FakeBundle:
         self.tasks = ["toxicity"]
         self.arms = {"toxicity": {}}
         self.deepfake = None
+        self.ocr = None
         self.device = torch.device("cpu")
         self.ready = True
 
@@ -160,6 +161,75 @@ class TestAnalyzeResponse:
 
     def test_unknown_item_is_404(self, client):
         assert client.get("/api/v1/items/does_not_exist").status_code == 404
+
+
+class _FakeOcrReader:
+    def readtext(self, image, detail=0):
+        return ["GIFT", "INCOMING"]
+
+
+class TestOcr:
+    def test_extracts_text_when_image_present(self, client, monkeypatch):
+        monkeypatch.setattr(app_module._state["bundle"], "ocr", _FakeOcrReader())
+        r = client.post(
+            "/api/v1/analyze",
+            data={"text": "hello"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        )
+        body = r.json()
+        assert body["input"]["ocr_text"] == "GIFT INCOMING"
+        assert "ocr" in body["latency_ms"]
+
+    def test_no_image_means_no_ocr_text(self, client, monkeypatch):
+        monkeypatch.setattr(app_module._state["bundle"], "ocr", _FakeOcrReader())
+        r = client.post("/api/v1/analyze", data={"text": "hello"})
+        assert r.json()["input"]["ocr_text"] is None
+
+    def test_run_ocr_false_is_honoured_even_when_a_reader_is_loaded(self, client, monkeypatch):
+        """The client's own opt-out must win over the server having a reader
+        available — run_ocr=false means "do not run it", not "best effort"."""
+        monkeypatch.setattr(app_module._state["bundle"], "ocr", _FakeOcrReader())
+        r = client.post(
+            "/api/v1/analyze",
+            data={"text": "hello", "run_ocr": "false"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        )
+        assert r.json()["input"]["ocr_text"] is None
+
+    def test_ocr_text_never_reaches_the_classifier(self, client, monkeypatch):
+        """The scoping decision this feature depends on: OCR text is shown to
+        the moderator but must never be spliced into what the heads score —
+        the models were trained on captions only, never on OCR'd meme text,
+        so mixing them in would be an untested distribution shift disguised
+        as a feature. Verified by asserting the exact text run_arms received."""
+        monkeypatch.setattr(app_module._state["bundle"], "ocr", _FakeOcrReader())
+        seen_text = {}
+
+        def capturing_run_arms(bundle, task, image, text):
+            seen_text["text"] = text
+            arms = ArmOutputs(
+                cv_only=0.3, nlp_only=0.3, fusion=0.3, fusion_probs={"benign": 0.7, "harmful": 0.3}
+            )
+            return arms, {"encode": 1}
+
+        monkeypatch.setattr(app_module, "run_arms", capturing_run_arms)
+        client.post(
+            "/api/v1/analyze",
+            data={"text": "the actual caption"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        )
+        assert seen_text["text"] == "the actual caption"
+
+    def test_no_reader_loaded_degrades_to_none(self, client):
+        """bundle.ocr defaults to None in the fixture, matching a deployment
+        where the reader failed to load — must not 500."""
+        r = client.post(
+            "/api/v1/analyze",
+            data={"text": "hello"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        )
+        assert r.status_code == 200
+        assert r.json()["input"]["ocr_text"] is None
 
 
 class TestQueueAndDecision:
