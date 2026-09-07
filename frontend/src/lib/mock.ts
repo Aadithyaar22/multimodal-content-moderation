@@ -280,8 +280,31 @@ function detailFor(item: QueueItem): ItemDetail {
         : undefined,
     },
     deepfake: { checked: true, score: 0.04, label: "authentic" },
+    // itm_misinfo_02's own narrative already describes the image as recirculated
+    // from ~8 months earlier — this is that same fact expressed as the
+    // image_reuse field, so the two surfaces of the UI agree with each other.
+    image_reuse:
+      item.item_id === "itm_misinfo_02"
+        ? {
+            checked: true,
+            is_reused: true,
+            similarity: 0.9912,
+            first_seen_item_id: "itm_archive_0114",
+            first_seen_at: "2026-01-14T11:02:03Z",
+            first_seen_text: "Hospital in central district overwhelmed as flu season peaks",
+            reason: null,
+          }
+        : {
+            checked: true,
+            is_reused: false,
+            similarity: 0,
+            first_seen_item_id: null,
+            first_seen_at: null,
+            first_seen_text: null,
+            reason: null,
+          },
     explanation_status: EXPLANATIONS[item.item_id] ? "ready" : "unavailable",
-    latency_ms: { total: 612, cv: 210, nlp: 95, fusion: 18, ocr: 289 },
+    latency_ms: { total: 612, cv: 210, nlp: 95, fusion: 18, ocr: 289, image_reuse: 34 },
     explanation: EXPLANATIONS[item.item_id] ?? null,
     attributions: ATTRIBUTIONS[item.item_id] ?? null,
     decisions: [],

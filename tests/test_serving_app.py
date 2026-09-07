@@ -36,6 +36,7 @@ class FakeBundle:
         self.arms = {"toxicity": {}}
         self.deepfake = None
         self.ocr = None
+        self.clip = _FakeClipForReuse()
         self.device = torch.device("cpu")
         self.ready = True
 
@@ -66,10 +67,34 @@ def client(monkeypatch):
     return TestClient(app_module.app)
 
 
-def _png_bytes(size=(8, 8)) -> bytes:
+def _png_bytes(size=(8, 8), color=(120, 40, 40)) -> bytes:
     buf = io.BytesIO()
-    Image.new("RGB", size, color=(120, 40, 40)).save(buf, format="PNG")
+    Image.new("RGB", size, color=color).save(buf, format="PNG")
     return buf.getvalue()
+
+
+class _FakeClipForReuse:
+    """Deterministic per-image embeddings without loading the real ~600MB
+    CLIP model. The embedding is the image's mean RGB, padded to a plausible
+    width — a solid-colour test fixture is fully described by that, so two
+    identical-coloured images produce (near-)identical embeddings and two
+    differently-coloured ones produce genuinely different directions, which
+    is all _check_image_reuse's cosine-similarity path needs to be exercised
+    for real rather than through the AttributeError-and-degrade path a
+    FakeBundle with no .clip at all was silently taking before this existed.
+    """
+
+    def preprocess_images(self, images):
+        import numpy as np
+
+        arrs = [np.asarray(img.convert("RGB")).reshape(-1, 3).mean(axis=0) for img in images]
+        return torch.tensor(np.array(arrs), dtype=torch.float32)
+
+    def encode_pooled(self, pixel_values=None, text_inputs=None):
+        from types import SimpleNamespace
+
+        padded = torch.nn.functional.pad(pixel_values, (0, 16 - pixel_values.shape[-1]))
+        return SimpleNamespace(image_emb=padded)
 
 
 class TestHealth:
@@ -230,6 +255,79 @@ class TestOcr:
         )
         assert r.status_code == 200
         assert r.json()["input"]["ocr_text"] is None
+
+
+class TestImageReuse:
+    """_check_image_reuse's real cosine-similarity path, exercised through
+    _FakeClipForReuse rather than the AttributeError-and-degrade path the
+    FakeBundle used to silently take (it had no .clip attribute at all)."""
+
+    def test_first_sighting_is_not_reused(self, client):
+        r = client.post(
+            "/api/v1/analyze",
+            data={"text": "first caption"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        )
+        body = r.json()["image_reuse"]
+        assert body["checked"] is True
+        assert body["is_reused"] is False
+
+    def test_second_sighting_of_the_same_image_is_flagged(self, client):
+        first = client.post(
+            "/api/v1/analyze",
+            data={"text": "first caption"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        ).json()
+
+        second = client.post(
+            "/api/v1/analyze",
+            data={"text": "second caption, different claim"},
+            files={"image": ("b.png", _png_bytes(), "image/png")},
+        ).json()
+
+        reuse = second["image_reuse"]
+        assert reuse["checked"] is True
+        assert reuse["is_reused"] is True
+        assert reuse["first_seen_item_id"] == first["item_id"]
+        assert reuse["first_seen_text"] == "first caption"
+        assert reuse["similarity"] > 0.9
+
+    def test_a_different_image_is_not_flagged_as_reused(self, client):
+        client.post(
+            "/api/v1/analyze",
+            data={"text": "first caption"},
+            files={"image": ("a.png", _png_bytes(color=(120, 40, 40)), "image/png")},
+        )
+        r = client.post(
+            "/api/v1/analyze",
+            data={"text": "unrelated caption"},
+            files={"image": ("b.png", _png_bytes(color=(10, 200, 10)), "image/png")},
+        )
+        assert r.json()["image_reuse"]["is_reused"] is False
+
+    def test_no_image_means_not_checked(self, client):
+        r = client.post("/api/v1/analyze", data={"text": "hello"})
+        body = r.json()["image_reuse"]
+        assert body["checked"] is False
+        assert body["is_reused"] is False
+        assert body["reason"] == "no image supplied"
+
+    def test_reuse_never_influences_the_verdict(self, client):
+        """Purely informational, the same guarantee OCR's isolation test pins:
+        the verdict comes from run_arms alone, so a reused image must score
+        identically to a first-sighting one."""
+        first = client.post(
+            "/api/v1/analyze",
+            data={"text": "first caption"},
+            files={"image": ("a.png", _png_bytes(), "image/png")},
+        ).json()
+        second = client.post(
+            "/api/v1/analyze",
+            data={"text": "second caption"},
+            files={"image": ("b.png", _png_bytes(), "image/png")},
+        ).json()
+        assert second["image_reuse"]["is_reused"] is True
+        assert second["verdict"] == first["verdict"]
 
 
 class TestQueueAndDecision:

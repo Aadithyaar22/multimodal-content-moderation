@@ -80,6 +80,22 @@ export interface AnalysisResult {
   active_heads: Array<"toxicity" | "misinformation">;
   fusion_signal: FusionSignal;
   deepfake: { checked: boolean; score: number; label: string };
+  /**
+   * Has this image been analyzed before, possibly under a different claim.
+   * Purely informational, like `deepfake` — a similarity score alone can't
+   * tell "same image, different caption" from "same image, legitimately
+   * re-shared", only a moderator reading `first_seen_text` can. Never
+   * influences `verdict` or `priority_score`.
+   */
+  image_reuse: {
+    checked: boolean;
+    is_reused: boolean;
+    similarity: number;
+    first_seen_item_id: string | null;
+    first_seen_at: string | null;
+    first_seen_text: string | null;
+    reason: string | null;
+  };
   explanation_status: ExplanationStatus;
   latency_ms: Record<string, number>;
 }

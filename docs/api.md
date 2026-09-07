@@ -132,8 +132,17 @@ returns `422`.
     "score": 0.04,
     "label": "authentic"
   },
+  "image_reuse": {
+    "checked": true,
+    "is_reused": true,
+    "similarity": 0.9912,
+    "first_seen_item_id": "itm_01J7ZQ9F2C",
+    "first_seen_at": "2026-08-14T03:02:11Z",
+    "first_seen_text": "Free gift cards for the first 100 people who share this!",
+    "reason": null
+  },
   "explanation_status": "pending",
-  "latency_ms": { "total": 612, "cv": 210, "nlp": 95, "fusion": 18, "ocr": 289 }
+  "latency_ms": { "total": 612, "cv": 210, "nlp": 95, "fusion": 18, "ocr": 289, "image_reuse": 34 }
 }
 ```
 
@@ -155,6 +164,18 @@ against `active_heads`, so this item is findable under either head it actually
 clears. Show every entry in `active_heads` in the UI, not only whichever the
 verdict headline happens to name — an item with two active heads is two
 separate reasons to look at it, not one.
+
+**`image_reuse` flags an image seen before, possibly under a different
+caption.** It is a CLIP cosine-similarity match against every previously
+analyzed image (threshold 0.90, chosen with a wide margin either side of what
+real re-uploads score empirically — see the constant's comment in
+`store.py`), purely informational like `deepfake`: "same image, different
+claim" and "same image, legitimately re-shared" look identical from a
+similarity score alone, and only a moderator reading `first_seen_text` next
+to the current caption can tell them apart. It never feeds back into
+`verdict` or `priority_score`. `checked: false` means the comparison did not
+run (no image supplied, or an internal error), not that the image is
+confirmed novel — `reason` says why.
 
 **Errors:** `413` file too large, `415` unsupported media type, `422` no input,
 `429` too many requests from this client (retry after `Retry-After` seconds —

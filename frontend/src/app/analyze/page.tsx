@@ -270,6 +270,19 @@ export default function AnalyzePage() {
             </GlassPanel>
           )}
 
+          {result.image_reuse.checked && result.image_reuse.is_reused && (
+            <GlassPanel title="Image seen before">
+              <p className="text-on-surface">
+                {(result.image_reuse.similarity * 100).toFixed(0)}% match to an
+                image first analyzed {result.image_reuse.first_seen_at}, captioned
+                &ldquo;{result.image_reuse.first_seen_text}&rdquo;.
+              </p>
+              <p className="label-tech mt-3 text-outline">
+                Informational only — does not change the verdict above.
+              </p>
+            </GlassPanel>
+          )}
+
           {attributions?.text && (
             <GlassPanel title="Token attribution (SHAP)">
               <ShapTokens tokens={attributions.text.tokens} />
