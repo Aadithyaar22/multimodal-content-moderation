@@ -170,9 +170,36 @@ export interface QueueFilters {
   cursor?: string;
 }
 
+export type FactCheckVerdict = "supported" | "contradicted" | "unclear" | "no_factual_claim";
+
+export interface FactCheckSource {
+  title: string;
+  url: string;
+  domain: string | null;
+}
+
+/**
+ * A live, web-search-grounded check of the caption's own claim — independent
+ * of `heads.misinformation`, which predicts a learned pattern rather than
+ * checking the specific claim. Opt-in: null until GET
+ * /items/{id}/fact-check has been called at least once, same as
+ * explanation/attributions before their first fetch.
+ */
+export interface FactCheck {
+  item_id: string;
+  status: ExplanationStatus;
+  verdict: FactCheckVerdict | null;
+  summary: string | null;
+  sources: FactCheckSource[];
+  model: string | null;
+  generated_at: string | null;
+  latency_ms: number | null;
+}
+
 export interface ItemDetail extends AnalysisResult {
   explanation: Explanation | null;
   attributions: Attributions | null;
+  fact_check: FactCheck | null;
   decisions: Decision[];
   status: ItemStatus;
 }

@@ -307,6 +307,27 @@ function detailFor(item: QueueItem): ItemDetail {
     latency_ms: { total: 612, cv: 210, nlp: 95, fusion: 18, ocr: 289, image_reuse: 34 },
     explanation: EXPLANATIONS[item.item_id] ?? null,
     attributions: ATTRIBUTIONS[item.item_id] ?? null,
+    // Opt-in in the real system too — null until GET .../fact-check is
+    // called at least once. itm_misinfo_02 gets a live-shaped fixture so the
+    // "check this claim" flow has something real to demo without spending a
+    // real search call; every other item stays null until the button fires,
+    // exercising the mock branch's own generic fallback in api.ts.
+    fact_check:
+      item.item_id === "itm_misinfo_02"
+        ? {
+            item_id: item.item_id,
+            status: "ready",
+            verdict: "contradicted",
+            summary:
+              "The claim that this hospital was overwhelmed by the new policy this week is contradicted. The same photograph appears in an unrelated report from roughly eight months earlier, describing a seasonal flu surge — nothing in current reporting ties it to the policy named in this caption.",
+            sources: [
+              { title: "regional-health-news.example", url: "https://example.com/flu-surge-report", domain: "regional-health-news.example" },
+            ],
+            model: "gemini-2.5-flash",
+            generated_at: ago(1150),
+            latency_ms: 6840,
+          }
+        : null,
     decisions: [],
     status: item.status,
   };

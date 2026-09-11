@@ -15,6 +15,7 @@ import type {
   DecisionAction,
   DecisionResponse,
   Explanation,
+  FactCheck,
   Health,
   ItemDetail,
   QueueFilters,
@@ -201,6 +202,28 @@ export async function getAttributions(itemId: string): Promise<Attributions> {
     );
   }
   return request<Attributions>(`/items/${itemId}/attributions`);
+}
+
+export async function getFactCheck(itemId: string): Promise<FactCheck> {
+  if (USE_MOCK) {
+    // Slower than explanation/attributions on purpose — a real search
+    // round-trip costs more than explaining a score the model already
+    // computed, and the loading state should be exercised as such.
+    await delay(3000);
+    return (
+      (MOCK_DETAILS[itemId] ?? mockLiveItems.get(itemId))?.fact_check ?? {
+        item_id: itemId,
+        status: "unavailable",
+        verdict: null,
+        summary: null,
+        sources: [],
+        model: null,
+        generated_at: null,
+        latency_ms: null,
+      }
+    );
+  }
+  return request<FactCheck>(`/items/${itemId}/fact-check`);
 }
 
 export async function submitDecision(

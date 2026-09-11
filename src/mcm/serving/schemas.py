@@ -140,6 +140,37 @@ class Explanation(BaseModel):
     latency_ms: int | None = None
 
 
+FactCheckVerdict = Literal["supported", "contradicted", "unclear", "no_factual_claim"]
+
+
+class FactCheckSource(BaseModel):
+    title: str
+    url: str
+    domain: str | None = None
+
+
+class FactCheck(BaseModel):
+    """A live, web-search-grounded check of the caption's own factual claim.
+
+    Deliberately independent of the misinformation head: that head predicts a
+    learned pattern (recycled image plus urgency framing looks like past
+    misinformation); this checks the specific claim against current search
+    results, and the two are meant to disagree sometimes. Opt-in — a client
+    calls this endpoint only when someone actually wants a claim checked, not
+    on every analysis, since a real search round-trip costs more than
+    explaining a score the model already computed.
+    """
+
+    item_id: str
+    status: ExplanationStatus
+    verdict: FactCheckVerdict | None = None
+    summary: str | None = None
+    sources: list[FactCheckSource] = Field(default_factory=list)
+    model: str | None = None
+    generated_at: str | None = None
+    latency_ms: int | None = None
+
+
 class TokenAttribution(BaseModel):
     token: str
     #: Signed: positive pushes toward harmful, negative toward benign.
@@ -230,6 +261,7 @@ class DecisionResponse(BaseModel):
 class ItemDetail(AnalysisResult):
     explanation: Explanation | None = None
     attributions: Attributions | None = None
+    fact_check: FactCheck | None = None
     decisions: list[dict] = Field(default_factory=list)
     status: str
 

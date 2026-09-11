@@ -33,6 +33,7 @@ from mcm import __version__
 from mcm.models.deepfake import combine_verdict
 from mcm.serving import attributions as attributions_mod
 from mcm.serving import explain as explain_mod
+from mcm.serving import factcheck as factcheck_mod
 from mcm.serving.inference import (
     THRESHOLD,
     ModelBundle,
@@ -48,6 +49,7 @@ from mcm.serving.schemas import (
     DecisionRequest,
     DecisionResponse,
     Explanation,
+    FactCheck,
     Health,
     ItemDetail,
     ModelCard,
@@ -509,6 +511,37 @@ def get_attributions(item_id: str) -> Attributions:
     # reopening an item should not pay for it twice.
     _store.update(item_id, {"attributions": payload})
     return Attributions(**payload)
+
+
+@app.get("/api/v1/items/{item_id}/fact-check", response_model=FactCheck)
+def get_fact_check(item_id: str) -> FactCheck:
+    """Live, web-search-grounded check of the caption's own claim.
+
+    Deliberately a separate endpoint from /explanation, not bundled into it —
+    a real search round-trip costs more than explaining a score the model
+    already computed, so this only runs when a client specifically asks for
+    it, not automatically on every analysis.
+    """
+    record = _store.get(item_id)
+    if not record:
+        raise HTTPException(404, "item not found")
+
+    cached = record.get("fact_check")
+    if cached and cached.get("status") == "ready":
+        return FactCheck(**cached)
+
+    misinfo = record["heads"].get("misinformation")
+    result = factcheck_mod.generate(
+        {
+            "text": record["input"]["text"],
+            "ocr_text": record["input"].get("ocr_text"),
+            "misinformation_label": misinfo["label"] if misinfo else None,
+            "misinformation_score": misinfo["score"] if misinfo else None,
+        }
+    )
+    payload = {"item_id": item_id, "generated_at": utcnow(), **result}
+    _store.update(item_id, {"fact_check": payload})
+    return FactCheck(**payload)
 
 
 @app.post("/api/v1/items/{item_id}/decision", response_model=DecisionResponse)
