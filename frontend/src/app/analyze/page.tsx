@@ -19,6 +19,7 @@ import type { ItemDetail } from "@/lib/types";
 import { useAsyncResource } from "@/hooks/useAsyncResource";
 import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
+import { FactCheckPanel } from "@/components/FactCheckPanel";
 import {
   EmergentBadge,
   GlassPanel,
@@ -282,6 +283,8 @@ export default function AnalyzePage() {
               </p>
             </GlassPanel>
           )}
+
+          <FactCheckPanel itemId={result.item_id} />
 
           {attributions?.text && (
             <GlassPanel title="Token attribution (SHAP)">

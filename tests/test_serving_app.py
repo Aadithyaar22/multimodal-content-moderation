@@ -330,6 +330,80 @@ class TestImageReuse:
         assert second["verdict"] == first["verdict"]
 
 
+class TestFactCheck:
+    def test_degrades_to_unavailable_without_crashing(self, client, monkeypatch):
+        """No API key configured (the fixture's default state) must return a
+        structured unavailable result, matching every other optional branch
+        in this service, not a 500."""
+        item_id = client.post("/api/v1/analyze", data={"text": "hello"}).json()["item_id"]
+        r = client.get(f"/api/v1/items/{item_id}/fact-check")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "unavailable"
+        assert body["verdict"] is None
+        assert body["sources"] == []
+
+    def test_ready_result_is_cached_across_calls(self, client, monkeypatch):
+        """A real search round-trip costs more than explaining a score the
+        model already computed — a moderator reopening an item must not pay
+        for a second search."""
+        calls = {"n": 0}
+
+        def fake_generate(payload):
+            calls["n"] += 1
+            return {
+                "status": "ready",
+                "verdict": "contradicted",
+                "summary": "Sources place this image years before the claimed event.",
+                "sources": [{"title": "Example", "url": "https://example.org", "domain": "example.org"}],
+                "model": "gemini-2.5-flash",
+                "latency_ms": 4200,
+            }
+
+        monkeypatch.setattr(app_module.factcheck_mod, "generate", fake_generate)
+        item_id = client.post("/api/v1/analyze", data={"text": "share before they delete this"}).json()[
+            "item_id"
+        ]
+
+        first = client.get(f"/api/v1/items/{item_id}/fact-check").json()
+        second = client.get(f"/api/v1/items/{item_id}/fact-check").json()
+
+        assert first["verdict"] == "contradicted"
+        assert first == second
+        assert calls["n"] == 1
+
+    def test_unknown_item_is_404(self, client):
+        assert client.get("/api/v1/items/does_not_exist/fact-check").status_code == 404
+
+    def test_misinformation_context_is_passed_without_deferring(self, client, monkeypatch):
+        """The context passed to factcheck.generate must carry the model's
+        own misinformation reading, but the prompt built from it must say not
+        to defer to it (see TestUserPrompt in test_factcheck.py) — this pins
+        that app.py actually wires the score through, not just that the
+        module knows what to do with one."""
+        seen = {}
+
+        def capturing_generate(payload):
+            seen.update(payload)
+            return {
+                "status": "unavailable",
+                "verdict": None,
+                "summary": None,
+                "sources": [],
+                "model": None,
+                "latency_ms": 1,
+            }
+
+        monkeypatch.setattr(app_module.factcheck_mod, "generate", capturing_generate)
+        item_id = client.post(
+            "/api/v1/analyze", data={"text": "share before they delete this"}
+        ).json()["item_id"]
+        client.get(f"/api/v1/items/{item_id}/fact-check")
+
+        assert seen["text"] == "share before they delete this"
+        assert "misinformation_label" in seen
+
+
 class TestQueueAndDecision:
     def test_total_pending_is_not_the_filtered_count(self, client):
         """The bug this pins: total_pending used to report the count matching

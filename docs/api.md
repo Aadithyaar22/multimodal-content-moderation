@@ -266,6 +266,70 @@ attended to which image regions. Draw these as connectors in the detail view.
 
 ---
 
+### `GET /items/{item_id}/fact-check`
+
+A live, web-search-grounded check of the caption's own factual claim — a
+genuinely different question from anything else this API answers. Every
+other field on this item describes what the *model* predicted from learned
+patterns; this asks whether the claim actually holds up against current,
+real search results, right now. Call it only when someone wants a claim
+checked — unlike `/explanation`, it never runs automatically as part of
+`/analyze`, since a real search round-trip costs more than explaining a
+score the model already computed.
+
+```json
+{
+  "item_id": "itm_01J8XQ2K3M",
+  "status": "ready",
+  "verdict": "contradicted",
+  "summary": "The claim that this photo shows a rally with over 500,000 attendees yesterday is contradicted. News reports from the same date describe several unrelated gatherings, the largest in the low hundreds of attendees; nothing at this scale was reported anywhere.",
+  "sources": [
+    { "title": "example-news.org", "url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/...", "domain": "example-news.org" }
+  ],
+  "model": "gemini-2.5-flash",
+  "generated_at": "2026-09-08T11:58:30Z",
+  "latency_ms": 7203
+}
+```
+
+**`verdict` is one of `supported` | `contradicted` | `unclear` |
+`no_factual_claim`.** `no_factual_claim` means the caption made no checkable
+assertion (opinion, joke, generic content) — that is a normal, correct
+outcome, not a failure. `unclear` means search did not turn up enough
+recent, credible material to decide either way; render this as genuinely
+inconclusive, not as a soft "probably fine."
+
+**`sources` can be empty even when `status` is `ready`.** A model that
+answered `no_factual_claim` typically searched nothing, so there is nothing
+to cite. `url` is Google's own grounding-redirect address, not the
+publisher's direct URL — it resolves correctly when followed, but don't
+parse or display it as the source's own domain; use the separate `domain`
+field for that (which itself can be `null` if the API didn't supply one, in
+which case `title` is your best display string).
+
+**This is deliberately independent of `heads.misinformation`.** That head
+predicts a learned pattern (a recycled image plus urgency framing looks like
+past misinformation in Fakeddit); this checks the specific claim against
+live search. They can and will disagree — the same caption can match no
+known misinformation pattern and still be checkably false, or match the
+pattern and still turn out to be true today. The moderation model's own
+misinformation reading is passed to the grounding prompt as context only;
+the prompt explicitly instructs the LLM not to defer to it.
+
+**Gemini only — no Groq fallback yet.** Groq's models don't expose the same
+built-in web-search tool the ones this project otherwise calls do. An unset
+`GEMINI_API_KEY`, or Gemini being unreachable, degrades straight to
+`status: "unavailable"` rather than trying a model with no real search
+capability and returning an ungrounded guess dressed up as a checked claim.
+
+**Errors:** `404` item not found. No dedicated rate limit beyond the
+service-wide defaults — this is a heavier call than `/explanation` (a real
+search round-trip on top of generation; ~5-8s observed in practice), so a
+client-side "checking…" state that doesn't block the rest of the page is the
+right UX, the same as `/explanation`'s own async pattern.
+
+---
+
 ### `GET /queue`
 
 The ranked moderator queue. **Ranked, not chronological** — that ordering is the
@@ -314,9 +378,12 @@ must not make a moderator's overall backlog count look smaller than it is.
 
 ### `GET /items/{item_id}`
 
-Full record: everything `/analyze` returned, plus explanation, attributions, and
-decision history in one payload. Use this for deep links into the detail view so
-a refresh doesn't require replaying `/analyze`.
+Full record: everything `/analyze` returned, plus explanation, attributions,
+`fact_check`, and decision history in one payload. Use this for deep links into
+the detail view so a refresh doesn't require replaying `/analyze`. `fact_check`
+is `null` until a client has specifically called `GET
+/items/{item_id}/fact-check` at least once — like `explanation` and
+`attributions`, it isn't computed proactively.
 
 ---
 

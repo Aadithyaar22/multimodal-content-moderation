@@ -17,6 +17,7 @@ import { ModalityLadder } from "@/components/ModalityLadder";
 import { ShapTokens } from "@/components/ShapTokens";
 import { EvidencePanel } from "@/components/EvidencePanel";
 import { DecisionBar } from "@/components/DecisionBar";
+import { FactCheckPanel } from "@/components/FactCheckPanel";
 import {
   EmergentBadge,
   GlassPanel,
@@ -193,6 +194,8 @@ export default function ItemPage({ params }: PageProps<"/items/[id]">) {
           </div>
         </GlassPanel>
       </div>
+
+      <FactCheckPanel itemId={item.item_id} />
 
       {attributions?.text && (
         <GlassPanel title="Token attribution (SHAP)" className="animate-rise">
