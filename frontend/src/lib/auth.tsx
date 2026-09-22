@@ -108,13 +108,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyToken],
   );
 
-  useEffect(() => {
-    if (!ready || !GOOGLE_CLIENT_ID) return;
+  // Deliberately NOT a useEffect keyed on `ready`: GIS's own script.onLoad
+  // callback is where this has to live. React runs a descendant's effects
+  // before its ancestor's for the same commit, and the login page's own
+  // "render the button once ready" effect is exactly such a descendant —
+  // keying both on the same `ready` flag raced initialize() against
+  // renderButton(), and renderButton always lost, failing silently but for
+  // one console warning ("Failed to render button before calling
+  // initialize()") that's easy to miss in a deploy nobody's watching the
+  // console on. Calling initialize() synchronously inside onLoad, before
+  // setReady(true) even runs, guarantees it has already happened by the
+  // time any consumer sees ready=true and tries to render a button.
+  const onGoogleScriptLoad = useCallback(() => {
     window.google?.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleCredential,
     });
-  }, [ready, handleCredential]);
+    setReady(true);
+  }, [handleCredential]);
 
   const registerWithPassword = useCallback(
     async (email: string, password: string, name: string) => {
@@ -163,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         <Script
           src="https://accounts.google.com/gsi/client"
           strategy="afterInteractive"
-          onLoad={() => setReady(true)}
+          onLoad={onGoogleScriptLoad}
         />
       )}
       {children}
