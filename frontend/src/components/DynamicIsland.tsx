@@ -40,7 +40,7 @@ const UNREACHABLE_AFTER = 5; // consecutive network failures before giving up
 
 export function DynamicIsland() {
   const pathname = usePathname();
-  const { user, configured, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [state, setState] = useState<IslandState>({ kind: "warming" });
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -193,26 +193,22 @@ export function DynamicIsland() {
           </>
         )}
 
-        {configured && (
-          <>
-            <span className="island-divider" aria-hidden />
-            {user ? (
-              <button
-                onClick={signOut}
-                title={`Signed in as ${user.email} — click to sign out`}
-                className="label-tech shrink-0 rounded-full px-3 py-1.5 text-white/70 hover:text-white"
-              >
-                {user.name.split(" ")[0]}
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="label-tech shrink-0 rounded-full px-3 py-1.5 text-white/55 hover:text-white"
-              >
-                Sign in
-              </Link>
-            )}
-          </>
+        <span className="island-divider" aria-hidden />
+        {user ? (
+          <button
+            onClick={signOut}
+            title={`Signed in as ${user.email} — click to sign out`}
+            className="label-tech shrink-0 rounded-full px-3 py-1.5 text-white/70 hover:text-white"
+          >
+            {user.name.split(" ")[0]}
+          </button>
+        ) : (
+          <Link
+            href="/login"
+            className="label-tech shrink-0 rounded-full px-3 py-1.5 text-white/55 hover:text-white"
+          >
+            Sign in
+          </Link>
         )}
       </nav>
     </div>

@@ -12,6 +12,7 @@ import {
 } from "./mock";
 import type {
   Attributions,
+  AuthResponse,
   DecisionAction,
   DecisionResponse,
   Explanation,
@@ -224,6 +225,49 @@ export async function getFactCheck(itemId: string): Promise<FactCheck> {
     );
   }
   return request<FactCheck>(`/items/${itemId}/fact-check`);
+}
+
+/**
+ * A JWT-shaped (unsigned, mock-only) token: lib/auth.tsx's decodeIdToken
+ * parses whatever token it's given as a real JWT regardless of source, so a
+ * mock response has to match that shape or "signed in" silently never
+ * becomes true in mock mode — this is not a real token and verifies nowhere.
+ */
+function mockToken(email: string, name: string): string {
+  const b64url = (obj: object) =>
+    btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const header = { alg: "none", typ: "JWT" };
+  const payload = { email, name, exp: Math.floor(Date.now() / 1000) + 3600 };
+  return `${b64url(header)}.${b64url(payload)}.mock`;
+}
+
+export async function registerWithPassword(
+  email: string,
+  password: string,
+  name: string,
+): Promise<AuthResponse> {
+  if (USE_MOCK) {
+    await delay(300);
+    return { token: mockToken(email, name), email, name };
+  }
+  return request<AuthResponse>("/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, name }),
+  });
+}
+
+export async function loginWithPassword(email: string, password: string): Promise<AuthResponse> {
+  if (USE_MOCK) {
+    await delay(300);
+    const name = email.split("@")[0];
+    return { token: mockToken(email, name), email, name };
+  }
+  return request<AuthResponse>("/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
 }
 
 export async function submitDecision(

@@ -1,16 +1,19 @@
 "use client";
 
 /**
- * Google Sign-In, client-side.
+ * Sign-in, client-side — two independent methods, one shared session shape.
  *
  * Google Identity Services (GIS) hands back a signed ID token directly in
  * the browser — no backend-for-frontend, no server-side OAuth callback, no
  * client secret anywhere in this frontend (Google's client id identifies
  * the app, it isn't a credential, so it's fine to ship it in client code).
- * The token is sent as-is to the backend on every decision; the backend is
- * the only thing that actually verifies it (mcm.serving.auth) — this file's
- * job is only to obtain the token and hold it for the session, never to
- * authorize anything on its own.
+ * Email/password accounts (registerWithPassword / loginWithPassword) call
+ * the backend's own /auth endpoints (mcm.serving.accounts) and get back a
+ * self-issued token in the same shape. Either way, the token is sent as-is
+ * to the backend on every decision; the backend is the only thing that
+ * actually verifies it (mcm.serving.auth tries both verification paths) —
+ * this file's job is only to obtain a token and hold it for the session,
+ * never to authorize anything on its own.
  *
  * The token is mirrored into localStorage purely for "stay signed in across
  * a reload" convenience. It is per-browser, never sent anywhere but this
@@ -29,6 +32,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { loginWithPassword as apiLogin, registerWithPassword as apiRegister } from "./api";
 
 export interface AuthUser {
   email: string;
@@ -42,12 +46,17 @@ interface AuthState {
   idToken: string | null;
   /** The GIS script has loaded and google.accounts.id is callable. */
   ready: boolean;
+  /** Google Sign-In specifically is configured (NEXT_PUBLIC_GOOGLE_CLIENT_ID
+   * set) — email/password accounts have no equivalent client-side gate,
+   * since they need no config on this side at all. */
   configured: boolean;
+  registerWithPassword: (email: string, password: string, name: string) => Promise<void>;
+  loginWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-const STORAGE_KEY = "mcm_google_id_token";
+const STORAGE_KEY = "mcm_auth_token";
 export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
 function decodeIdToken(token: string): AuthUser | null {
@@ -85,14 +94,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const handleCredential = useCallback((response: { credential: string }) => {
-    setRawToken(response.credential);
+  const applyToken = useCallback((token: string) => {
+    setRawToken(token);
     try {
-      localStorage.setItem(STORAGE_KEY, response.credential);
+      localStorage.setItem(STORAGE_KEY, token);
     } catch {
       /* ignore — the session just won't survive a reload */
     }
   }, []);
+
+  const handleCredential = useCallback(
+    (response: { credential: string }) => applyToken(response.credential),
+    [applyToken],
+  );
 
   useEffect(() => {
     if (!ready || !GOOGLE_CLIENT_ID) return;
@@ -101,6 +115,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       callback: handleCredential,
     });
   }, [ready, handleCredential]);
+
+  const registerWithPassword = useCallback(
+    async (email: string, password: string, name: string) => {
+      const res = await apiRegister(email, password, name);
+      applyToken(res.token);
+    },
+    [applyToken],
+  );
+
+  const loginWithPassword = useCallback(
+    async (email: string, password: string) => {
+      const res = await apiLogin(email, password);
+      applyToken(res.token);
+    },
+    [applyToken],
+  );
 
   const signOut = useCallback(() => {
     setRawToken(null);
@@ -120,9 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       idToken: user ? rawToken : null,
       ready,
       configured: !!GOOGLE_CLIENT_ID,
+      registerWithPassword,
+      loginWithPassword,
       signOut,
     }),
-    [user, rawToken, ready, signOut],
+    [user, rawToken, ready, registerWithPassword, loginWithPassword, signOut],
   );
 
   return (

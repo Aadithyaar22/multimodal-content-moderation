@@ -217,11 +217,20 @@ export interface DecisionResponse {
   item_id: string;
   status: ItemStatus;
   action: DecisionAction;
-  /** The verified Google-account email that signed this decision — set
-   * server-side from the sign-in token, never from client input. */
+  /** The verified signer's email (Google account, or a registered
+   * email/password account) — set server-side from the sign-in token,
+   * never from client input. */
   moderator_id: string;
   decided_at: string;
   time_to_decision_seconds: number;
+}
+
+/** A self-issued sign-in token from POST /auth/register or /auth/login —
+ * accepted by POST /items/{id}/decision exactly like a Google ID token. */
+export interface AuthResponse {
+  token: string;
+  email: string;
+  name: string;
 }
 
 export interface Stats {

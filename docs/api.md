@@ -68,6 +68,66 @@ show a warming state and poll every 2s.
 
 ---
 
+### `POST /auth/register`
+
+Creates an email/password account — the alternative to Google Sign-In for
+`POST /items/{id}/decision`, for anyone who doesn't have or doesn't want to
+use a Google account. No auth required to call this one, obviously.
+
+```json
+{
+  "email": "moderator@example.com",
+  "password": "a real, memorable password",
+  "name": "Moderator Name"
+}
+```
+
+**Response `200`:**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "email": "moderator@example.com",
+  "name": "Moderator Name"
+}
+```
+
+`token` is a self-issued JWT, valid for 7 days, accepted by
+`POST /items/{id}/decision`'s `Authorization: Bearer <token>` header exactly
+like a Google ID token — `require_moderator` tries both verification paths
+and doesn't care which one a client used.
+
+**No email verification.** Registering with an email nobody controls
+succeeds; there is no confirmation link (sending one needs a transactional
+email provider this project doesn't have configured). This token proves
+"whoever holds this password", not "a verified email address" the way
+Google's does. **No password reset**, for the same underlying reason.
+
+**Errors:** `422` invalid email, password under 8 characters, or empty name;
+`409` an account with this email already exists; `429` too many requests
+from this client (10/5min — this is the one place credential verification
+happens, so it's the one place a brute-force or enumeration script would
+actually aim at); `503` sign-in is not configured on this deployment
+(`JWT_SECRET` unset).
+
+---
+
+### `POST /auth/login`
+
+```json
+{ "email": "moderator@example.com", "password": "a real, memorable password" }
+```
+
+**Response `200`:** identical shape to `/auth/register`'s.
+
+**Errors:** `401` invalid email or password — deliberately the same status,
+message, and response body whether the email doesn't exist or the password
+is wrong, so a caller can't use the error to enumerate registered emails.
+`429` (same bucket as `/auth/register`, they share one client-level budget).
+`503` sign-in not configured.
+
+---
+
 ### `POST /analyze`
 
 The core call. Accepts an image, text, or both.
@@ -397,15 +457,18 @@ is `null` until a client has specifically called `GET
 Records a human decision. This is the only state-changing endpoint, and the
 only one that requires sign-in.
 
-**Requires `Authorization: Bearer <google-id-token>`.** The token is a
-Google Identity Services credential (obtained via "Sign in with Google" in
-the browser — see `docs/deployment.md`'s Google Sign-In section), verified
-server-side against Google's own public keys (`mcm.serving.auth`). There is
-no `moderator_id` field in the request body — earlier versions of this API
-trusted whatever string a client sent there, so anyone with the URL could
-submit a decision as anyone. The moderator's identity now comes only from
-the verified token; a client-supplied identity is never trusted for a
-permanent record again.
+**Requires `Authorization: Bearer <token>`.** Two independent, equally valid
+kinds of token: a Google Identity Services credential (obtained via "Sign in
+with Google" — see `docs/deployment.md`'s Google Sign-In section), verified
+against Google's own public keys; or a token from `POST /auth/login` /
+`POST /auth/register` above, verified against this service's own
+`JWT_SECRET`. `require_moderator` (`mcm.serving.auth`) tries both and
+accepts whichever one verifies — a client never needs to say which kind it's
+sending. There is no `moderator_id` field in the request body — earlier
+versions of this API trusted whatever string a client sent there, so anyone
+with the URL could submit a decision as anyone. The moderator's identity
+now comes only from the verified token; a client-supplied identity is never
+trusted for a permanent record again.
 
 ```json
 {

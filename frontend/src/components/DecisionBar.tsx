@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { submitDecision } from "@/lib/api";
 import { announceToIsland } from "@/components/DynamicIsland";
@@ -97,12 +98,17 @@ export function DecisionBar({ itemId }: { itemId: string }) {
     return (
       <div className="sticky bottom-0 z-40 -mx-6 mt-10 border-t border-[var(--color-glass-border)] bg-[rgba(0,0,0,0.8)] px-6 py-4 backdrop-blur-2xl md:-mx-12 md:px-12">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4">
-          <span className="label-tech text-outline">
-            {configured
-              ? "Sign in to record a decision"
-              : "Sign-in is not configured on this deployment"}
-          </span>
-          {configured && <div ref={signInRef} className="ml-auto" />}
+          <span className="label-tech text-outline">Sign in to record a decision</span>
+          {/* Google's own button, inline, when it's configured — the fast
+              path for the common case. Email/password always works too,
+              via the link, since it needs no deployment config at all. */}
+          {configured && <div ref={signInRef} />}
+          <Link
+            href="/login"
+            className="label-tech ml-auto rounded-full border border-outline-variant px-4 py-2 text-on-surface hover:border-outline"
+          >
+            Sign in
+          </Link>
         </div>
       </div>
     );

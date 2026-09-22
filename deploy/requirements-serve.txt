@@ -35,6 +35,13 @@ groq>=0.11
 # change its own pin at any time.
 google-auth>=2.30
 
+# Email/password accounts (mcm.serving.accounts), the alternative to Google
+# Sign-In for POST /decision. argon2-cffi hashes passwords (Argon2id, OWASP's
+# current recommendation); PyJWT issues and verifies this service's own
+# sign-in tokens.
+argon2-cffi>=23.1
+PyJWT>=2.9
+
 # OCR (mcm.serving.inference's optional reader). NOT declared in pyproject.toml
 # at all — it lives only in the [cv] extra, which the image never installs.
 # Adding it here, in the file the build actually consults, from the start,

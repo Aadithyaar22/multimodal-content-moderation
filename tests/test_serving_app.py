@@ -51,6 +51,11 @@ def client(monkeypatch):
     monkeypatch.setattr(app_module, "_store", Store(uri=""))
     monkeypatch.setattr(app_module, "_images", {})
     ratelimit._hits.clear()
+    # So /auth/register and /auth/login work in every test without each one
+    # configuring it — mirrors how a real deployment needs JWT_SECRET set.
+    # 32+ bytes to match HS256's own recommended minimum (PyJWT warns below
+    # that on every encode/decode otherwise).
+    monkeypatch.setenv("JWT_SECRET", "test-secret-not-for-real-use-0123456789")
 
     monkeypatch.setitem(app_module._state, "bundle", FakeBundle())
     monkeypatch.setitem(app_module._state, "loading", False)
@@ -563,6 +568,140 @@ class TestDecisionAuth:
         )
         assert r.status_code == 401
 
+    def test_a_self_registered_account_can_sign_a_decision_end_to_end(
+        self, unauthenticated_client
+    ):
+        """No monkeypatching of verify_google_token or accounts.verify_token
+        anywhere in this test — register, log in, and submit a decision all
+        go through the real code, proving the two auth methods actually
+        compose rather than just asserting they should in isolation."""
+        unauthenticated_client.post(
+            "/api/v1/auth/register",
+            json={"email": "real.mod@example.com", "password": "correct horse battery staple", "name": "Real Mod"},
+        )
+        login = unauthenticated_client.post(
+            "/api/v1/auth/login",
+            json={"email": "real.mod@example.com", "password": "correct horse battery staple"},
+        ).json()
+
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        r = unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision",
+            json={"action": "approve"},
+            headers={"Authorization": f"Bearer {login['token']}"},
+        )
+        assert r.status_code == 200
+        assert r.json()["moderator_id"] == "real.mod@example.com"
+
+
+class TestAccountsEndpoints:
+    def test_register_then_login_round_trips(self, client):
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "new.mod@example.com", "password": "a-real-password", "name": "New Mod"},
+        )
+        assert r.status_code == 200
+        assert r.json()["email"] == "new.mod@example.com"
+
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"email": "new.mod@example.com", "password": "a-real-password"},
+        )
+        assert r.status_code == 200
+        assert r.json()["email"] == "new.mod@example.com"
+
+    def test_registering_the_same_email_twice_is_409(self, client):
+        body = {"email": "dup@example.com", "password": "a-real-password", "name": "Dup"}
+        assert client.post("/api/v1/auth/register", json=body).status_code == 200
+        second = client.post("/api/v1/auth/register", json=body)
+        assert second.status_code == 409
+
+    def test_login_with_wrong_password_is_401(self, client):
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": "mod@example.com", "password": "the-real-password", "name": "Mod"},
+        )
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"email": "mod@example.com", "password": "not-the-real-password"},
+        )
+        assert r.status_code == 401
+
+    def test_login_with_unknown_email_is_401_not_404(self, client):
+        """Same status and message as a wrong password — a distinct 404
+        would let a caller enumerate which emails are registered."""
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"email": "nobody@example.com", "password": "whatever"},
+        )
+        assert r.status_code == 401
+
+    def test_unknown_email_and_wrong_password_give_identical_error_bodies(self, client):
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": "real@example.com", "password": "the-real-password", "name": "Real"},
+        )
+        wrong_password = client.post(
+            "/api/v1/auth/login",
+            json={"email": "real@example.com", "password": "wrong"},
+        )
+        no_such_account = client.post(
+            "/api/v1/auth/login",
+            json={"email": "nobody@example.com", "password": "wrong"},
+        )
+        assert wrong_password.status_code == no_such_account.status_code == 401
+        assert wrong_password.json() == no_such_account.json()
+
+    def test_password_is_never_returned_in_any_response(self, client):
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "mod@example.com", "password": "a-real-password", "name": "Mod"},
+        )
+        assert "password" not in r.text
+        assert "a-real-password" not in r.text
+
+    def test_rejects_short_password(self, client):
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "mod@example.com", "password": "short", "name": "Mod"},
+        )
+        assert r.status_code == 422
+
+    def test_rejects_invalid_email(self, client):
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "not-an-email", "password": "a-real-password", "name": "Mod"},
+        )
+        assert r.status_code == 422
+
+    def test_rejects_empty_name(self, client):
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "mod@example.com", "password": "a-real-password", "name": "   "},
+        )
+        assert r.status_code == 422
+
+    def test_email_is_case_insensitive_across_register_and_login(self, client):
+        client.post(
+            "/api/v1/auth/register",
+            json={"email": "Mixed.Case@Example.com", "password": "a-real-password", "name": "Mod"},
+        )
+        r = client.post(
+            "/api/v1/auth/login",
+            json={"email": "mixed.case@example.com", "password": "a-real-password"},
+        )
+        assert r.status_code == 200
+
+    def test_no_jwt_secret_configured_is_503_not_500(self, client, monkeypatch):
+        monkeypatch.delenv("JWT_SECRET", raising=False)
+        r = client.post(
+            "/api/v1/auth/register",
+            json={"email": "mod@example.com", "password": "a-real-password", "name": "Mod"},
+        )
+        assert r.status_code == 503
+
 
 class TestActiveHeads:
     """End-to-end version of the queue-filter blind spot: a real Hateful Memes
@@ -692,6 +831,39 @@ class TestRateLimit:
 
         assert client.get("/api/v1/health").status_code == 200
         assert client.get("/api/v1/queue").status_code == 200
+
+    def test_auth_endpoints_block_after_the_configured_window(self, client, monkeypatch):
+        """The one place this service does credential verification — the
+        place a brute-force or account-enumeration script would actually
+        aim at — must have its own limit, same standard as /analyze and
+        /fact-check."""
+        monkeypatch.setattr(ratelimit, "AUTH_MAX_REQUESTS_PER_WINDOW", 3)
+
+        for _ in range(3):
+            r = client.post(
+                "/api/v1/auth/login",
+                json={"email": "nobody@example.com", "password": "wrong"},
+            )
+            assert r.status_code == 401  # not yet rate-limited, just wrong
+
+        blocked = client.post(
+            "/api/v1/auth/login",
+            json={"email": "nobody@example.com", "password": "wrong"},
+        )
+        assert blocked.status_code == 429
+        assert "Retry-After" in blocked.headers
+
+    def test_auth_bucket_is_independent_of_analyze_and_fact_check(self, client, monkeypatch):
+        monkeypatch.setattr(ratelimit, "MAX_REQUESTS_PER_WINDOW", 1)
+        monkeypatch.setattr(ratelimit, "AUTH_MAX_REQUESTS_PER_WINDOW", 3)
+        client.post("/api/v1/analyze", data={"text": "hi"})
+        client.post("/api/v1/analyze", data={"text": "hi"})  # now over /analyze's limit
+
+        for _ in range(3):
+            r = client.post(
+                "/api/v1/auth/login", json={"email": "x@example.com", "password": "wrong"}
+            )
+            assert r.status_code != 429
 
     def test_fact_check_has_its_own_bucket(self, client, monkeypatch):
         """/fact-check shipped with no limit at all — a real gap, since it's a

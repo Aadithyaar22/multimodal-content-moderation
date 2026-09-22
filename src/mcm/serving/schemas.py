@@ -263,11 +263,33 @@ class DecisionResponse(BaseModel):
     item_id: str
     status: str
     action: DecisionAction
-    #: The verified signer's email — set server-side from the Google token,
-    #: never from client input. See DecisionRequest's own note.
+    #: The verified signer's email — set server-side from whichever sign-in
+    #: method verified (Google or POST /auth), never from client input. See
+    #: DecisionRequest's own note.
     moderator_id: str
     decided_at: str
     time_to_decision_seconds: int
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    """A self-issued sign-in token, in the same shape require_moderator
+    already accepts from a Google ID token — the frontend treats both
+    identically once it has one."""
+
+    token: str
+    email: str
+    name: str
 
 
 class ItemDetail(AnalysisResult):

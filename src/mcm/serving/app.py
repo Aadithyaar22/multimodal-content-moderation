@@ -31,6 +31,7 @@ from PIL import Image
 
 from mcm import __version__
 from mcm.models.deepfake import combine_verdict
+from mcm.serving import accounts as accounts_mod
 from mcm.serving import attributions as attributions_mod
 from mcm.serving import explain as explain_mod
 from mcm.serving import factcheck as factcheck_mod
@@ -44,20 +45,27 @@ from mcm.serving.inference import (
     run_arms,
     verdict_for,
 )
-from mcm.serving.ratelimit import enforce_fact_check_rate_limit, enforce_rate_limit
+from mcm.serving.ratelimit import (
+    enforce_auth_rate_limit,
+    enforce_fact_check_rate_limit,
+    enforce_rate_limit,
+)
 from mcm.serving.schemas import (
     Attributions,
+    AuthResponse,
     DecisionRequest,
     DecisionResponse,
     Explanation,
     FactCheck,
     Health,
     ItemDetail,
+    LoginRequest,
     ModelCard,
     QueueResponse,
+    RegisterRequest,
     Stats,
 )
-from mcm.serving.store import Store, parse_utc, utcnow
+from mcm.serving.store import EmailTaken, Store, parse_utc, utcnow
 from mcm.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -276,6 +284,81 @@ def health() -> Health:
         # keeps polling forever with nothing to show the reason.
         error=_state["error"],
     )
+
+
+@app.post(
+    "/api/v1/auth/register",
+    response_model=AuthResponse,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+)
+def register(body: RegisterRequest) -> AuthResponse:
+    """Create an account with an email and password — an alternative to
+    Google Sign-In for anyone who doesn't have or doesn't want to use one.
+
+    No email verification: this succeeds even for an email nobody controls
+    (see mcm.serving.accounts's own note on why). The returned token is
+    accepted by require_moderator exactly like a Google ID token.
+    """
+    email = accounts_mod.normalize_email(body.email)
+    if not accounts_mod.valid_email(email):
+        raise HTTPException(422, "not a valid email address")
+    if len(body.password) < accounts_mod.MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            422, f"password must be at least {accounts_mod.MIN_PASSWORD_LENGTH} characters"
+        )
+    name = body.name.strip()[:200]
+    if not name:
+        raise HTTPException(422, "name is required")
+
+    try:
+        _store.create_user(
+            {
+                "email": email,
+                "password_hash": accounts_mod.hash_password(body.password),
+                "name": name,
+                "created_at": utcnow(),
+            }
+        )
+    except EmailTaken as e:
+        # Deliberately less careful than login's identical-error-either-way
+        # rule: registration already tells a caller whether an email exists
+        # by definition (that's what "create an account" means), so there is
+        # nothing to protect by being vague here the way login has to be.
+        raise HTTPException(409, "an account with this email already exists") from e
+
+    try:
+        token = accounts_mod.issue_token(email, name)
+    except ValueError as e:
+        # JWT_SECRET unset — the account was created fine (that part needs
+        # no config of its own), but there is no way to hand back a usable
+        # token until this deployment is configured. A separate try block
+        # from create_user's above on purpose: catching ValueError around
+        # both would also swallow a real bug inside create_user itself.
+        raise HTTPException(503, str(e)) from e
+
+    return AuthResponse(token=token, email=email, name=name)
+
+
+@app.post(
+    "/api/v1/auth/login",
+    response_model=AuthResponse,
+    dependencies=[Depends(enforce_auth_rate_limit)],
+)
+def login(body: LoginRequest) -> AuthResponse:
+    email = accounts_mod.normalize_email(body.email)
+    user = _store.get_user(email)
+
+    # Identical error, and identical code path cost, whether the email
+    # doesn't exist or the password is wrong — telling the two apart from
+    # the response would let a caller enumerate which emails are registered.
+    if not user or not accounts_mod.verify_password(body.password, user["password_hash"]):
+        raise HTTPException(401, "invalid email or password")
+
+    try:
+        token = accounts_mod.issue_token(user["email"], user["name"])
+    except ValueError as e:
+        raise HTTPException(503, str(e)) from e
+    return AuthResponse(token=token, email=user["email"], name=user["name"])
 
 
 @app.post("/api/v1/analyze", response_model=ItemDetail, dependencies=[Depends(enforce_rate_limit)])

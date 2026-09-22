@@ -19,7 +19,7 @@ from mcm.serving.inference import (
     priority_score,
     verdict_for,
 )
-from mcm.serving.store import Store
+from mcm.serving.store import EmailTaken, Store
 
 
 def arms(cv: float, nlp: float, fusion: float) -> ArmOutputs:
@@ -197,6 +197,34 @@ class TestStore:
         assert stats["queue"]["pending"] == 0
         assert stats["model"]["agreement_rate"] == 0.0
 
+    def test_create_and_get_user_round_trips(self):
+        s = Store(uri="")
+        s.create_user({"email": "mod@example.com", "password_hash": "h", "name": "Mod"})
+        user = s.get_user("mod@example.com")
+        assert user is not None
+        assert user["name"] == "Mod"
+
+    def test_get_user_normalizes_email_case(self):
+        """A client posting 'A@x.com' and later logging in as 'a@x.com'
+        must resolve to the same account, not silently fail to match."""
+        s = Store(uri="")
+        s.create_user({"email": "Mixed.Case@Example.com", "password_hash": "h", "name": "Mod"})
+        assert s.get_user("mixed.case@example.com") is not None
+        assert s.get_user("  MIXED.CASE@EXAMPLE.COM  ") is not None
+
+    def test_create_user_rejects_duplicate_email(self):
+        s = Store(uri="")
+        s.create_user({"email": "mod@example.com", "password_hash": "h1", "name": "First"})
+        with pytest.raises(EmailTaken):
+            s.create_user({"email": "mod@example.com", "password_hash": "h2", "name": "Second"})
+        # The first account's hash must survive the rejected second attempt
+        # untouched — a plain dict assignment instead of a real uniqueness
+        # check would have silently overwritten it.
+        assert s.get_user("mod@example.com")["password_hash"] == "h1"
+
+    def test_get_unknown_user_is_none_not_an_error(self):
+        assert Store(uri="").get_user("nobody@example.com") is None
+
 
 class _FakeCursor:
     """Just enough of pymongo's Cursor for Store's own call sites: chained
@@ -286,6 +314,7 @@ def _mongo_store() -> Store:
     s = Store(uri="")
     s._collection = FakeMongoCollection()
     s._image_collection = FakeMongoCollection()
+    s._users_collection = FakeUsersCollection()
     return s
 
 
@@ -365,6 +394,48 @@ class TestStoreMongoBackend:
         s = _mongo_store()
         s.put({"item_id": "a", "status": "resolved", "agreed_with_model": True})
         assert s.aggregate_stats()["model"]["agreement_rate"] == 1.0
+
+    def test_create_and_get_user_round_trips(self):
+        s = _mongo_store()
+        s.create_user({"email": "mod@example.com", "password_hash": "h", "name": "Mod"})
+        assert s.get_user("mod@example.com")["name"] == "Mod"
+
+    def test_create_user_rejects_duplicate_email(self):
+        """Pins that the real uniqueness guarantee comes from Mongo's own
+        unique index (create_index("email", unique=True) in __init__) via a
+        DuplicateKeyError, not just from create_user's in-memory branch."""
+        s = _mongo_store()
+        s.create_user({"email": "mod@example.com", "password_hash": "h1", "name": "First"})
+        with pytest.raises(EmailTaken):
+            s.create_user({"email": "mod@example.com", "password_hash": "h2", "name": "Second"})
+
+
+class FakeUsersCollection:
+    """Minimal stand-in for the pymongo Collection surface
+    Store.create_user/get_user actually call — insert_one with real
+    duplicate-key semantics, find_one by email. A separate, smaller fake
+    from FakeMongoCollection above rather than extending it: that one is
+    keyed on item_id and built around replace_one/find/count_documents,
+    a genuinely different access shape from a uniqueness-constrained
+    insert-only collection."""
+
+    def __init__(self):
+        self.docs: dict[str, dict] = {}
+
+    def create_index(self, *args, **kwargs):
+        pass
+
+    def insert_one(self, doc):
+        from pymongo.errors import DuplicateKeyError
+
+        email = doc["email"]
+        if email in self.docs:
+            raise DuplicateKeyError(f"duplicate email: {email}")
+        self.docs[email] = dict(doc)
+
+    def find_one(self, filt, projection=None):
+        doc = self.docs.get(filt["email"])
+        return dict(doc) if doc is not None else None
 
 
 class FakeOcrReader:

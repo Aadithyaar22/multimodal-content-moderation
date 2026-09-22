@@ -294,6 +294,54 @@ with the browser's network tab, or `GET /items/{item_id}` afterwards.
 
 ---
 
+### Email/password accounts, as an alternative (`JWT_SECRET`)
+
+`POST /auth/register` and `POST /auth/login` (`mcm.serving.accounts`) give
+anyone who doesn't have or doesn't want a Google account a second way to
+sign in for `POST /items/{id}/decision` — same downstream code, same
+`DecisionResponse.moderator_id` shape, `require_moderator` accepts either
+kind of token from the same header. Covered by `tests/test_accounts.py` and
+`tests/test_serving_app.py::TestAccountsEndpoints`.
+
+Unlike `GOOGLE_CLIENT_ID`, **`JWT_SECRET` is a real secret** — this service
+signs its own tokens with it, so anyone who has it can forge a valid sign-in
+for any account. Never put it in a `NEXT_PUBLIC_*` variable, never commit
+it, and generate it with a real random-bytes command, not a phrase you
+think up (a guessable secret defeats the whole point of signing anything).
+32 random bytes, hex-encoded, is the standard minimum for HS256 — the
+algorithm PyJWT actually warns below that length:
+
+```bash
+openssl rand -hex 32
+```
+
+Set the result on the backend only — there is no frontend env var for this
+one, since the frontend never sees it and doesn't need to:
+
+```bash
+gcloud run services update vanguard-moderation-api --region=asia-south1 \
+  --update-env-vars=JWT_SECRET="<the-64-hex-characters-openssl-printed>"
+```
+
+Without `JWT_SECRET` set, `/auth/register` and `/auth/login` both return
+`503` — a clear "not configured" rather than an unauthenticated fallback.
+This is independent of `GOOGLE_CLIENT_ID`: either one alone is enough for
+`/decision` to work for someone using that sign-in method; both configured
+means moderators can use whichever they prefer.
+
+**Rotating the secret** (a leak, or routine hygiene) invalidates every token
+issued under the old one immediately — every email/password-signed-in
+moderator gets a `401` on their next decision and has to log in again. There
+is no migration path that avoids this; it is the correct behavior for a
+compromised secret, and a minor inconvenience for routine rotation.
+
+**Verify:** register an account from the frontend's login page, confirm the
+response includes a `token`, then submit a decision with
+`Authorization: Bearer <token>` and confirm `moderator_id` in the response
+is the email you registered with.
+
+---
+
 ## Verifying
 
 ```bash

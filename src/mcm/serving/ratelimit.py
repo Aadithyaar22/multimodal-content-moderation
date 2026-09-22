@@ -43,6 +43,14 @@ MAX_REQUESTS_PER_WINDOW = 20
 FACT_CHECK_WINDOW_SECONDS = 60
 FACT_CHECK_MAX_REQUESTS_PER_WINDOW = 5
 
+# /auth/login and /auth/register: not billed like the two above, but the one
+# place this service does credential verification, which makes it the one
+# place a brute-force or account-enumeration script would actually aim at.
+# 10 attempts per 5 minutes is generous for a person who fat-fingered their
+# password twice, and hostile to a script trying passwords in a loop.
+AUTH_WINDOW_SECONDS = 300
+AUTH_MAX_REQUESTS_PER_WINDOW = 10
+
 _lock = threading.Lock()
 # Keyed by "{bucket}:{client}" so /analyze and /fact-check track independent
 # budgets per caller in one shared structure — a single _hits.clear() (used
@@ -101,3 +109,8 @@ def enforce_fact_check_rate_limit(request: Request) -> None:
     _enforce(
         "fact_check", request, FACT_CHECK_MAX_REQUESTS_PER_WINDOW, FACT_CHECK_WINDOW_SECONDS
     )
+
+
+def enforce_auth_rate_limit(request: Request) -> None:
+    """FastAPI dependency for /auth/login and /auth/register."""
+    _enforce("auth", request, AUTH_MAX_REQUESTS_PER_WINDOW, AUTH_WINDOW_SECONDS)

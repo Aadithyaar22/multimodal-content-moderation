@@ -37,6 +37,13 @@ MAX_IMAGE_INDEX = 2000
 # close call.
 IMAGE_REUSE_THRESHOLD = 0.90
 
+# Same hygiene rationale as MAX_IMAGE_INDEX.
+MAX_USER_INDEX = 2000
+
+
+class EmailTaken(Exception):
+    """Raised by Store.create_user when the email is already registered."""
+
 
 def utcnow() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -55,6 +62,12 @@ class Store:
         # filter — and mixing the two would mean every /queue call scanning
         # past 512-float vectors it never uses.
         self._image_index: list[dict[str, Any]] = []
+        # Registered accounts (mcm.serving.accounts), keyed by lowercased
+        # email. Separate from _memory for the same reason _image_index is:
+        # a completely different access pattern (lookup by email, uniqueness
+        # enforced), not the item-id/priority queries the moderation records
+        # use.
+        self._users: dict[str, dict[str, Any]] = {}
         # FastAPI runs sync path operations in a thread pool, and Cloud Run is
         # configured for concurrency=4 per instance, so the memory fallback is
         # genuinely accessed from multiple threads at once. A dict's individual
@@ -66,6 +79,7 @@ class Store:
         self._lock = threading.Lock()
         self._collection = None
         self._image_collection = None
+        self._users_collection = None
 
         if self.uri:
             try:
@@ -80,6 +94,8 @@ class Store:
                     "image_embeddings"
                 )
                 self._image_collection.create_index("item_id", unique=True)
+                self._users_collection = client.get_database("mcm").get_collection("users")
+                self._users_collection.create_index("email", unique=True)
                 log.info("moderation store: mongodb")
             except Exception as e:  # noqa: BLE001
                 # A database that is configured but unreachable should not take
@@ -87,6 +103,7 @@ class Store:
                 log.warning("mongodb unavailable (%s); falling back to memory", e)
                 self._collection = None
                 self._image_collection = None
+                self._users_collection = None
 
         if self._collection is None:
             log.info("moderation store: in-memory (set MONGODB_URI to persist)")
@@ -246,6 +263,51 @@ class Store:
             self._image_index.append(doc)
             while len(self._image_index) > MAX_IMAGE_INDEX:
                 self._image_index.pop(0)
+
+    def get_user(self, email: str) -> dict[str, Any] | None:
+        """Look up a registered account by email (mcm.serving.accounts).
+
+        Email is normalized to lowercase everywhere it touches this store —
+        the uniqueness guarantee below only holds if "A@x.com" and "a@x.com"
+        are treated as the same account, not two.
+        """
+        email = email.strip().lower()
+        if self._users_collection is not None:
+            return self._users_collection.find_one({"email": email}, {"_id": 0})
+        with self._lock:
+            return self._users.get(email)
+
+    def create_user(self, user: dict[str, Any]) -> None:
+        """Register a new account, or raise EmailTaken if the email exists.
+
+        Raising a single, backend-independent exception here — rather than
+        letting pymongo's DuplicateKeyError leak through only on the Mongo
+        path — means the endpoint has one thing to catch regardless of
+        which backend is live, instead of the in-memory path silently
+        overwriting an existing account (a real bug this shape avoids: a
+        plain dict assignment would let a second registration to the same
+        email quietly replace the first account's password hash).
+        """
+        email = user["email"].strip().lower()
+        if self._users_collection is not None:
+            from pymongo.errors import DuplicateKeyError
+
+            try:
+                self._users_collection.insert_one({**user, "email": email})
+            except DuplicateKeyError as e:
+                raise EmailTaken(email) from e
+            return
+        with self._lock:
+            if email in self._users:
+                raise EmailTaken(email)
+            self._users[email] = {**user, "email": email}
+            # Hygiene bound, mirroring _image_index — not a real concern at
+            # this project's scale, but an unbounded dict in a long-running
+            # process is a slow leak regardless of how unlikely it is to
+            # matter in practice.
+            if len(self._users) > MAX_USER_INDEX:
+                oldest = next(iter(self._users))
+                del self._users[oldest]
 
     def count_pending(self) -> int:
         """Total pending items, independent of whatever filters a caller applied.
