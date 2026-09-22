@@ -1,19 +1,111 @@
-# Multimodal Content Moderation
+<div align="center">
 
-Harm detection from the **relationship between image and text**, not from
-per-modality scores — with explainable verdicts for human moderators.
+<img src="https://capsule-render.vercel.app/api?type=waving&height=220&color=0:000000,50:0E3B3B,100:0E6E6E&text=VANGUARD&fontSize=68&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=Cross-Attention%20Multimodal%20Content%20Moderation&descAlignY=60&descSize=18&descColor=E4F1F0" width="100%" alt="Vanguard"/>
 
-Single-signal moderation fails in two directions. It misses harm that only
-exists jointly (an innocuous photo plus an innocuous caption that together imply
-a threat), and it over-flags when context is missing (a violent news photograph
-with a caption that makes clear it is reporting). Averaging two "safe" scores
-stays safe, so late fusion structurally cannot catch the first case. This project
-keeps the raw representations alive through a cross-attention block so those
-joint patterns can actually be learned, and measures the difference against a
-late-fusion baseline.
+<a href="https://multimodal-content-moderation.vercel.app"><img src="https://readme-typing-svg.demolab.com/?font=Fira+Code&size=19&pause=1400&color=0E6E6E&center=true&vCenter=true&repeat=true&width=700&lines=Harm+from+the+relationship+between+image+and+text;Cross-attention+fusion%2C+not+late+fusion;Decision-support+only+%E2%80%94+nothing+here+auto-removes+content;Grad-CAM+%2B+occlusion+%2B+live+web-search+claim+checking" alt="Typing SVG" /></a>
 
-Framing: this is a **decision-support tool for human moderators**. It ranks and
-explains content for faster review. It does not auto-remove anything.
+<br/>
+
+[![Live app](https://img.shields.io/badge/live-vanguard--moderation-0E6E6E?style=for-the-badge)](https://multimodal-content-moderation.vercel.app)
+[![Backend health](https://img.shields.io/badge/backend-Cloud%20Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)](https://vanguard-moderation-api-2wr445ogxq-el.a.run.app/api/v1/health)
+[![Checkpoints](https://img.shields.io/badge/checkpoints-HuggingFace-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/Aadithya1122/vanguard-moderation-checkpoints)
+
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.6-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)
+![CLIP](https://img.shields.io/badge/CLIP-ViT--B%2F32-000000?style=flat-square)
+![FastAPI](https://img.shields.io/badge/FastAPI-backend-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=flat-square&logo=mongodb&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-8E75B2?style=flat-square&logo=googlegemini&logoColor=white)
+![No CUDA](https://img.shields.io/badge/GPU-none%20(MPS%2FCPU)-red?style=flat-square)
+
+</div>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
+Single-signal moderation fails in two directions. It **misses** harm that only
+exists jointly — an innocuous photo plus an innocuous caption that together
+imply a threat — and it **over-flags** when context is missing, like a violent
+news photograph whose caption makes clear it's reporting, not glorifying.
+Averaging two "safe" scores stays safe, so late fusion structurally cannot
+catch the first case. Vanguard keeps the raw representations alive through a
+cross-attention block so joint patterns can actually be learned, and measures
+the difference against a late-fusion baseline honestly — including when the
+result doesn't clear statistical significance.
+
+This is a **decision-support tool for human moderators**, not an autonomous
+ban-hammer. Every verdict's `auto_action` field is hard-typed `None` in the
+API schema — not a policy the frontend happens to follow, a contract the
+backend cannot violate without changing the type.
+
+<div align="center">
+
+### [→ Try it live](https://multimodal-content-moderation.vercel.app) &nbsp;·&nbsp; [Full report](reports/REPORT.md) &nbsp;·&nbsp; [API docs](docs/api.md) &nbsp;·&nbsp; [Architecture](PROJECT_CONTEXT.md)
+
+</div>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
+## Contents
+
+- [What you can actually do with it](#what-you-can-actually-do-with-it)
+- [Architecture](#architecture)
+- [Status](#status)
+- [Results](#results)
+- [Beyond the original plan](#beyond-the-original-plan)
+- [Setup](#setup)
+- [Data](#data)
+- [Running the stack locally](#running-the-stack-locally)
+- [Layout](#layout)
+- [Hardware](#hardware)
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
+## What you can actually do with it
+
+Open **[the live app](https://multimodal-content-moderation.vercel.app)** —
+no account needed for either of these:
+
+| Action | What happens |
+|---|---|
+| **Analyze** an image and/or caption | Runs the full fusion pipeline: CV-only, NLP-only, and cross-attention scores, an emergent-signal flag (harm visible only in the combination), a Grad-CAM heatmap, occlusion-based token attribution, image-reuse detection, and a plain-English LLM narrative |
+| **Check a claim** ("Is this true?") | A live, web-search-grounded check of the caption's own factual claim — independent of the misinformation head, which predicts a learned pattern rather than verifying the specific claim. Verdict: `supported` / `contradicted` / `unclear` / `no_factual_claim`, with real cited sources |
+| **Record a decision** (requires sign-in) | Approve / remove / escalate / defer, logged against a verified identity — Google Sign-In or an email/password account, your choice |
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
+## Architecture
+
+```mermaid
+flowchart TD
+    FE["Next.js frontend<br/>(Vercel)"]
+    API["FastAPI backend<br/>(Cloud Run)"]
+    CLIP["Frozen CLIP ViT-B/32<br/>shared by every arm"]
+    FUSION["Cross-attention fusion<br/>+ CV-only / NLP-only arms"]
+    AUX["Auxiliary checks<br/>Deepfake · OCR · Image-reuse"]
+    LLM["Gemini 2.5 Flash / Groq<br/>narrative + claim grounding"]
+    DB["MongoDB Atlas<br/>decisions · accounts · queue"]
+    AUTH["Google Sign-In /<br/>email+password (Argon2id)"]
+
+    FE -->|REST| API
+    API --> CLIP
+    CLIP --> FUSION
+    API --> AUX
+    API -->|"explain / fact-check"| LLM
+    API --> DB
+    FE -.->|sign in| AUTH
+    AUTH -.->|verified token| API
+```
+
+Two signals join the verdict **without** passing through cross-attention, each
+for a stated reason: the deepfake branch reasons about pixel-level artifacts
+unrelated to caption semantics, and image-reuse is a CLIP cosine-similarity
+search against every previously analyzed image (threshold 0.90, set
+empirically against real near-duplicate degradation, not assumed). Both are
+purely informational — a moderator's own read of the evidence, never a hidden
+input to the score.
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
 
 ## Status
 
@@ -24,14 +116,18 @@ explains content for faster review. It does not auto-remove anything.
 | 3. Late fusion baseline | done |
 | 4. Cross-attention fusion (core contribution) | done |
 | 5. Deepfake branch | done — score-level, outside the attention block |
-| 6. Explainability layer (SHAP / Grad-CAM / LLM) | done |
-| 7. Ablation study + evaluation | done |
-| 8. FastAPI backend | done |
-| 9. Frontend | done |
-| 10. Deployment | done — Cloud Run + Vercel |
+| 6. Explainability layer (occlusion / Grad-CAM / LLM) | done |
+| 7. Ablation study + evaluation | done, including a deletion-test faithfulness eval |
+| 8. FastAPI backend | done — persisted to MongoDB Atlas |
+| 9. Frontend | done — Google + email/password sign-in for decisions |
+| 10. Deployment | done — Cloud Run + Vercel, ~12s cold start |
 
 Full architecture and rationale: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
 API contract: [docs/api.md](docs/api.md). Deployment: [docs/deployment.md](docs/deployment.md).
+Full academic report, including every honest limitation found along the way:
+[reports/REPORT.md](reports/REPORT.md).
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
 
 ## Results
 
@@ -98,12 +194,59 @@ is itself seed-dependent (106–121), since it is defined by that seed's own
 unimodal arms. A single-seed run of this measure gave −4.6%, in the opposite
 direction — which is why it is reported with an error bar and not from one run.
 
+### Explanation faithfulness (deletion test)
+
+Mask the region the explanation names as most important, and a random
+region of the same size, and compare how much each hurts the score
+(`scripts/faithfulness_eval.py`, n=40 per dataset):
+
+| Modality | Gap (top-region − random-region) | p |
+|---|---|---|
+| Text | +0.0978 (Hateful Memes), +0.0544 (Fakeddit) | **0.0001**, **0.018** — faithful |
+| Image | +0.0295 (Hateful Memes), +0.0195 (Fakeddit) | 0.16, 0.31 — right-signed, not yet significant at this n |
+
 ```bash
 python scripts/encode_features.py --all
 python scripts/sweep_fusion.py --arch cross_attention --datasets hateful_memes
 python scripts/ablation_table.py --datasets hateful_memes fakeddit
 python scripts/fusion_delta.py --dataset hateful_memes --seeds 1 2 3 4 5
+python scripts/faithfulness_eval.py --datasets hateful_memes fakeddit --n 40
 ```
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
+## Beyond the original plan
+
+Four things exist that weren't in the original spec at all — built in response
+to actually running the deployed service, not planned upfront.
+
+**Live claim grounding.** `GET /items/{id}/fact-check` asks a genuinely
+different question than anything else in this API: does the caption's own
+claim hold up against current, real search results, right now — Gemini's
+search-grounding tool does the round-trip. Deliberately independent of the
+misinformation head (which predicts a learned pattern), opt-in on its own
+rate-limited endpoint, since a real search costs more than explaining a score
+the model already computed.
+
+**Two independent ways to sign in.** Google Sign-In and self-issued
+email/password accounts (Argon2id hashing, JWT, both verified server-side) —
+either can sign a moderator decision. Closed a real gap: earlier, a decision
+trusted whatever `moderator_id` string a client sent, unverified.
+
+**Per-endpoint rate limiting.** `/analyze`, `/fact-check`, and `/auth/*` each
+have their own budget — `/fact-check` shipped with none at all originally, a
+real cost-exposure bug on a public URL doing billed search calls, caught and
+closed mid-session.
+
+**Two production bugs found by actually redeploying, not by code review**:
+a queue filter that compared a 2-way and a 3-way classifier's raw scores as if
+they were on the same scale (fixed with `active_heads`), and a Cloud Run
+cold start that took 12 minutes instead of 30 seconds — traced through a real
+but incomplete first fix to the actual cause (CPU throttling on the
+background model-loading thread) by measuring again after the fix that didn't
+fully work, not by trusting that it had.
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
 
 ## Setup
 
@@ -119,7 +262,7 @@ Optional subsystems install separately so the base environment stays small:
 ```bash
 uv pip install -e ".[xai]"    # SHAP, Grad-CAM, LIME
 uv pip install -e ".[cv]"     # OpenCV, EasyOCR, YOLO
-uv pip install -e ".[serve]"  # FastAPI, MongoDB, Gemini/Groq
+uv pip install -e ".[serve]"  # FastAPI, MongoDB, Gemini/Groq, Google/JWT auth
 uv pip install -e ".[track]"  # Weights & Biases
 ```
 
@@ -199,6 +342,8 @@ their content — only code that fetches it.
 - **HateXplain** is MIT-licensed and contains slurs and hate speech by
   construction, since that is what it annotates.
 
+<img src="https://capsule-render.vercel.app/api?type=waving&height=20&color=0:000000,100:0E6E6E&animation=fadeIn" width="100%"/>
+
 ## Running the stack locally
 
 ```bash
@@ -212,7 +357,10 @@ cd frontend && npm install && npm run dev
 
 The frontend runs against fixtures with `NEXT_PUBLIC_USE_MOCK=true` in
 `frontend/.env.local`, so the whole interface is buildable and demoable with no
-backend running.
+backend running. Google Sign-In and MongoDB persistence are both optional —
+unset, they degrade to "email/password only" and "in-memory, wiped on
+restart" respectively, never to a silent failure. Exact setup for both:
+[docs/deployment.md](docs/deployment.md).
 
 ## Layout
 
@@ -224,7 +372,11 @@ src/mcm/data/schema.py   the canonical record format + validation
 src/mcm/data/prepare/    one normalization pipeline per dataset
 src/mcm/models/          CLIP encoder, heads, baselines, cross-attention fusion
 src/mcm/training/        training loop, metrics, significance testing
+src/mcm/explain/         Grad-CAM, occlusion attribution
 src/mcm/serving/app.py   FastAPI application
+src/mcm/serving/auth.py  Google + self-issued token verification
+src/mcm/serving/accounts.py  email/password accounts (Argon2id, JWT)
+src/mcm/serving/factcheck.py live web-search claim grounding
 frontend/                Next.js interface
 deploy/                  Dockerfile and serving requirements
 scripts/                 data prep, feature caching, training, sweeps, analysis
@@ -236,3 +388,6 @@ MacBook Air M4, 24GB unified memory, MPS. The CLIP backbone stays frozen and
 only the cross-attention layers and heads are trained — full CLIP fine-tuning is
 not realistic in this memory budget, and freezing it is also what keeps the
 unimodal and fusion arms of the ablation comparable.
+
+<img src="https://capsule-render.vercel.app/api?type=waving&height=100&color=0:0E6E6E,100:000000&animation=fadeIn&section=footer"/>
+
