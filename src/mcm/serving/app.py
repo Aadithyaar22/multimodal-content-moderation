@@ -34,6 +34,7 @@ from mcm.models.deepfake import combine_verdict
 from mcm.serving import attributions as attributions_mod
 from mcm.serving import explain as explain_mod
 from mcm.serving import factcheck as factcheck_mod
+from mcm.serving.auth import require_moderator
 from mcm.serving.inference import (
     THRESHOLD,
     ModelBundle,
@@ -554,7 +555,9 @@ def get_fact_check(item_id: str, request: Request) -> FactCheck:
 
 
 @app.post("/api/v1/items/{item_id}/decision", response_model=DecisionResponse)
-def submit_decision(item_id: str, body: DecisionRequest) -> DecisionResponse:
+def submit_decision(
+    item_id: str, body: DecisionRequest, moderator: dict = Depends(require_moderator)
+) -> DecisionResponse:
     record = _store.get(item_id)
     if not record:
         raise HTTPException(404, "item not found")
@@ -562,7 +565,15 @@ def submit_decision(item_id: str, body: DecisionRequest) -> DecisionResponse:
     decided_at = utcnow()
     elapsed = max(0, int(parse_utc(decided_at) - parse_utc(record["created_at"])))
 
-    decision = {**body.model_dump(), "decided_at": decided_at}
+    # The verified signer's email, never client input — see DecisionRequest's
+    # own note on why this field no longer accepts one.
+    moderator_id = moderator["email"]
+    decision = {
+        **body.model_dump(),
+        "moderator_id": moderator_id,
+        "moderator_name": moderator.get("name"),
+        "decided_at": decided_at,
+    }
     _store.update(
         item_id,
         {
@@ -578,6 +589,7 @@ def submit_decision(item_id: str, body: DecisionRequest) -> DecisionResponse:
         item_id=item_id,
         status="resolved",
         action=body.action,
+        moderator_id=moderator_id,
         decided_at=decided_at,
         time_to_decision_seconds=elapsed,
     )

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Anybody, Inter, Noto_Serif } from "next/font/google";
 import { Chrome } from "@/components/Chrome";
+import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
 // Fallbacks for the two commercial faces the design calls for.
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${anybody.variable} ${notoSerif.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-black">
-        <Chrome>{children}</Chrome>
+        <AuthProvider>
+          <Chrome>{children}</Chrome>
+        </AuthProvider>
       </body>
     </html>
   );

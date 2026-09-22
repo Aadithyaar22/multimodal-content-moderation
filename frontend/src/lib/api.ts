@@ -230,25 +230,33 @@ export async function submitDecision(
   itemId: string,
   body: {
     action: DecisionAction;
-    moderator_id: string;
     rationale?: string;
     agreed_with_model?: boolean;
     explanation_was_useful?: boolean;
   },
+  idToken: string,
 ): Promise<DecisionResponse> {
+  // No moderator_id in the body — the backend derives it from idToken and
+  // rejects the request outright if it's missing or doesn't verify. Earlier
+  // versions of this API trusted a client-supplied moderator_id string,
+  // which meant anyone with the URL could submit a decision as anyone.
   if (USE_MOCK) {
     await delay(260);
     return {
       item_id: itemId,
       status: "resolved",
       action: body.action,
+      moderator_id: "mock.moderator@example.com",
       decided_at: new Date().toISOString(),
       time_to_decision_seconds: 138,
     };
   }
   return request<DecisionResponse>(`/items/${itemId}/decision`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
     body: JSON.stringify(body),
   });
 }

@@ -11,13 +11,19 @@
  * They are deliberately optional and one-click: a required field on a bar a
  * moderator hits hundreds of times a day gets clicked through, and the data
  * becomes worthless.
+ *
+ * Submitting requires a verified Google sign-in — the backend rejects a
+ * decision with no valid token regardless of what this component sends, so
+ * the sign-in prompt below is a UX convenience, not the actual security
+ * boundary; a moderator who isn't signed in sees an inline Google button
+ * here rather than the action buttons, without leaving the item.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitDecision } from "@/lib/api";
 import { announceToIsland } from "@/components/DynamicIsland";
-import { getModeratorId } from "@/lib/moderator";
+import { useAuth, renderGoogleButton } from "@/lib/auth";
 import type { DecisionAction } from "@/lib/types";
 
 const ACTIONS: Array<{ action: DecisionAction; label: string; key: string }> = [
@@ -29,24 +35,41 @@ const ACTIONS: Array<{ action: DecisionAction; label: string; key: string }> = [
 
 export function DecisionBar({ itemId }: { itemId: string }) {
   const router = useRouter();
+  const { user, idToken, ready, configured } = useAuth();
   const [pending, setPending] = useState<DecisionAction | null>(null);
   const [done, setDone] = useState<DecisionAction | null>(null);
   const [agreed, setAgreed] = useState<boolean | null>(null);
   const [useful, setUseful] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const signInRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ready && !user && signInRef.current) {
+      renderGoogleButton(signInRef.current, { size: "medium" });
+    }
+  }, [ready, user]);
 
   async function decide(action: DecisionAction) {
-    if (pending || done) return;
+    if (pending || done || !idToken) return;
     setPending(action);
+    setError(null);
     try {
-      await submitDecision(itemId, {
-        action,
-        moderator_id: getModeratorId(),
-        agreed_with_model: agreed ?? undefined,
-        explanation_was_useful: useful ?? undefined,
-      });
+      await submitDecision(
+        itemId,
+        {
+          action,
+          agreed_with_model: agreed ?? undefined,
+          explanation_was_useful: useful ?? undefined,
+        },
+        idToken,
+      );
       setDone(action);
       announceToIsland(`Recorded: ${action}`);
       setTimeout(() => router.push("/queue"), 700);
+    } catch (e) {
+      // A token that verified a moment ago can still expire mid-session;
+      // surfacing this beats a decision silently not being recorded.
+      setError((e as Error).message || "Could not record the decision.");
     } finally {
       setPending(null);
     }
@@ -58,6 +81,7 @@ export function DecisionBar({ itemId }: { itemId: string }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      if (!idToken) return;
       const hit = ACTIONS.find((a) => a.key === e.key.toLowerCase());
       if (hit) {
         e.preventDefault();
@@ -67,13 +91,28 @@ export function DecisionBar({ itemId }: { itemId: string }) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending, done, agreed, useful]);
+  }, [pending, done, agreed, useful, idToken]);
+
+  if (!user) {
+    return (
+      <div className="sticky bottom-0 z-40 -mx-6 mt-10 border-t border-[var(--color-glass-border)] bg-[rgba(0,0,0,0.8)] px-6 py-4 backdrop-blur-2xl md:-mx-12 md:px-12">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4">
+          <span className="label-tech text-outline">
+            {configured
+              ? "Sign in to record a decision"
+              : "Sign-in is not configured on this deployment"}
+          </span>
+          {configured && <div ref={signInRef} className="ml-auto" />}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="sticky bottom-0 z-40 -mx-6 mt-10 border-t border-[var(--color-glass-border)] bg-[rgba(0,0,0,0.8)] px-6 py-4 backdrop-blur-2xl md:-mx-12 md:px-12">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4">
         <span className="label-tech text-outline">
-          {done ? "Decision recorded" : "Your decision"}
+          {done ? "Decision recorded" : `Signed in as ${user.name}`}
         </span>
 
         <div className="flex flex-wrap gap-2">
@@ -95,6 +134,10 @@ export function DecisionBar({ itemId }: { itemId: string }) {
             </button>
           ))}
         </div>
+
+        {error && (
+          <span className="label-tech text-[var(--color-harm)]">{error}</span>
+        )}
 
         <div className="ml-auto flex flex-wrap gap-2">
           <FeedbackToggle

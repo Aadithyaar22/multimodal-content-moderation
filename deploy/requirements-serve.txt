@@ -27,6 +27,14 @@ pymongo>=4.8
 google-genai>=0.3
 groq>=0.11
 
+# Google Sign-In verification (mcm.serving.auth), for POST /decision only.
+# Already present transitively via google-genai's own dependency tree today,
+# but declared explicitly for the same reason as the two lines above:
+# something this file imports directly must be a line this file reads, not
+# a dependency inherited by accident from an unrelated package that could
+# change its own pin at any time.
+google-auth>=2.30
+
 # OCR (mcm.serving.inference's optional reader). NOT declared in pyproject.toml
 # at all — it lives only in the [cv] extra, which the image never installs.
 # Adding it here, in the file the build actually consults, from the start,

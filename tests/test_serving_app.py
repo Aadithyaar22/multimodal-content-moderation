@@ -23,9 +23,12 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from mcm.serving import app as app_module
+from mcm.serving import auth as auth_mod
 from mcm.serving import ratelimit
 from mcm.serving.inference import ArmOutputs
 from mcm.serving.store import Store
+
+_FAKE_MODERATOR = {"email": "mod@example.com", "name": "Test Moderator", "sub": "123"}
 
 
 class FakeBundle:
@@ -64,7 +67,25 @@ def client(monkeypatch):
 
     monkeypatch.setattr(app_module, "run_arms", fake_run_arms)
 
-    return TestClient(app_module.app)
+    # Every test that doesn't specifically care about auth gets a signed-in
+    # moderator for free — most decision tests are about the queue/status
+    # mechanics, not the sign-in flow. TestDecisionAuth below uses
+    # unauthenticated_client to exercise the real check instead of this
+    # override. dependency_overrides lives on the shared, module-level app,
+    # so it must be cleaned up after the test or it leaks into the next one.
+    app_module.app.dependency_overrides[auth_mod.require_moderator] = lambda: _FAKE_MODERATOR
+    try:
+        yield TestClient(app_module.app)
+    finally:
+        app_module.app.dependency_overrides.pop(auth_mod.require_moderator, None)
+
+
+@pytest.fixture
+def unauthenticated_client(client):
+    """The same client, with the default sign-in override removed — for
+    tests that exercise require_moderator's real header-parsing logic."""
+    app_module.app.dependency_overrides.pop(auth_mod.require_moderator, None)
+    return client
 
 
 def _png_bytes(size=(8, 8), color=(120, 40, 40)) -> bytes:
@@ -423,12 +444,11 @@ class TestQueueAndDecision:
         pending_before = client.get("/api/v1/queue", params={"status": "pending"}).json()
         assert item_id in [i["item_id"] for i in pending_before["items"]]
 
-        r = client.post(
-            f"/api/v1/items/{item_id}/decision",
-            json={"action": "approve", "moderator_id": "mod_test"},
-        )
+        r = client.post(f"/api/v1/items/{item_id}/decision", json={"action": "approve"})
         assert r.status_code == 200
         assert r.json()["status"] == "resolved"
+        # The verified signer, not anything a client could claim in the body.
+        assert r.json()["moderator_id"] == _FAKE_MODERATOR["email"]
 
         pending_after = client.get("/api/v1/queue", params={"status": "pending"}).json()
         assert item_id not in [i["item_id"] for i in pending_after["items"]]
@@ -438,10 +458,7 @@ class TestQueueAndDecision:
         assert item_id in [i["item_id"] for i in resolved_after["items"]]
 
     def test_decision_on_unknown_item_is_404(self, client):
-        r = client.post(
-            "/api/v1/items/does_not_exist/decision",
-            json={"action": "approve", "moderator_id": "mod_test"},
-        )
+        r = client.post("/api/v1/items/does_not_exist/decision", json={"action": "approve"})
         assert r.status_code == 404
 
     def test_queue_ranks_by_priority_not_arrival(self, client, monkeypatch):
@@ -460,6 +477,91 @@ class TestQueueAndDecision:
 
         items = client.get("/api/v1/queue").json()["items"]
         assert items[0]["text_preview"] == "high priority"
+
+
+class TestDecisionAuth:
+    """Every other decision test above runs with require_moderator overridden
+    to a fixed, always-valid signer — appropriate for tests about queue/status
+    mechanics, but it means none of them actually exercise the sign-in check
+    itself. These do, via unauthenticated_client, which removes that
+    override and lets requests hit the real dependency."""
+
+    def test_missing_auth_header_is_401(self, unauthenticated_client):
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        r = unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision", json={"action": "approve"}
+        )
+        assert r.status_code == 401
+        assert "WWW-Authenticate" in r.headers
+
+    def test_decision_is_never_recorded_without_auth(self, unauthenticated_client):
+        """The 401 above must be a hard stop, not merely a warning — an item
+        a rejected request touched must not silently move to resolved."""
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision", json={"action": "approve"}
+        )
+        item = unauthenticated_client.get(f"/api/v1/items/{item_id}").json()
+        assert item["status"] == "pending"
+
+    def test_valid_token_is_accepted_and_sets_the_verified_moderator_id(
+        self, unauthenticated_client, monkeypatch
+    ):
+        monkeypatch.setattr(
+            auth_mod,
+            "verify_google_token",
+            lambda token: {"email": "real.mod@gmail.com", "name": "Real Mod"},
+        )
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        r = unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision",
+            json={"action": "approve"},
+            headers={"Authorization": "Bearer looks-like-a-real-token"},
+        )
+        assert r.status_code == 200
+        assert r.json()["moderator_id"] == "real.mod@gmail.com"
+
+    def test_a_client_supplied_moderator_id_is_ignored_not_trusted(
+        self, unauthenticated_client, monkeypatch
+    ):
+        """The whole point of this change: even if a client sends
+        moderator_id in the body (the old contract), it must never override
+        the verified identity from the token."""
+        monkeypatch.setattr(
+            auth_mod,
+            "verify_google_token",
+            lambda token: {"email": "real.mod@gmail.com", "name": "Real Mod"},
+        )
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        r = unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision",
+            json={"action": "approve", "moderator_id": "someone_else"},
+            headers={"Authorization": "Bearer t"},
+        )
+        assert r.json()["moderator_id"] == "real.mod@gmail.com"
+
+    def test_invalid_token_is_401_not_500(self, unauthenticated_client, monkeypatch):
+        def raises(token):
+            raise ValueError("Token expired")
+
+        monkeypatch.setattr(auth_mod, "verify_google_token", raises)
+        item_id = unauthenticated_client.post(
+            "/api/v1/analyze", data={"text": "hi"}
+        ).json()["item_id"]
+        r = unauthenticated_client.post(
+            f"/api/v1/items/{item_id}/decision",
+            json={"action": "approve"},
+            headers={"Authorization": "Bearer garbage"},
+        )
+        assert r.status_code == 401
 
 
 class TestActiveHeads:

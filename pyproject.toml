@@ -31,7 +31,7 @@ dependencies = [
 xai = ["shap>=0.46", "grad-cam>=1.5", "lime>=0.2.0.1", "matplotlib>=3.9"]
 cv = ["opencv-python-headless>=4.10", "easyocr>=1.7", "ultralytics>=8.2"]
 deepfake = ["timm>=1.0"]
-serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "pymongo>=4.8", "google-genai>=0.3", "groq>=0.11", "easyocr>=1.7"]
+serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9", "pymongo>=4.8", "google-genai>=0.3", "groq>=0.11", "easyocr>=1.7", "google-auth>=2.30"]
 track = ["wandb>=0.17"]
 dev = ["pytest>=8.3", "ruff>=0.6"]
 
@@ -49,6 +49,14 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# fastapi.Query as a default argument is already exempt from B008 out of the
+# box; fastapi.Depends is not, even though it is the same intentional
+# FastAPI dependency-injection pattern, not the mutable-default-argument bug
+# B008 exists to catch — Depends(func) wraps a *function reference* FastAPI
+# calls per-request, it never evaluates or shares state across requests.
+extend-immutable-calls = ["fastapi.Depends"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

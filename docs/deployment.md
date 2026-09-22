@@ -227,11 +227,70 @@ caught: the endpoint always returned `"unavailable"` regardless of whether a key
 was configured, because the import itself failed and was swallowed by the same
 per-backend `except Exception` that is meant to catch an unset key.
 
-`/analyze` is rate-limited per client to 20 requests/minute — it is the only
-endpoint that costs a CLIP forward pass and, once an explanation is requested,
-a paid LLM call. The limit is in-process (`mcm/serving/ratelimit.py`), so it
-resets per instance and under-counts once more than one instance is running;
-that is an accepted tradeoff at demo scale, not an oversight.
+`/analyze` is rate-limited per client to 20 requests/minute — it costs a CLIP
+forward pass and, once an explanation is requested, a paid LLM call.
+`/fact-check` has its own, tighter limit (5/minute) — a real web-search
+round-trip is billed per call and costs more than `/analyze`'s own LLM call,
+and it shipped with no limit at all until this was caught (`docs/api.md`'s
+own note on it). Both limits are in-process (`mcm/serving/ratelimit.py`), so
+they reset per instance and under-count once more than one instance is
+running; that is an accepted tradeoff at demo scale, not an oversight.
+
+---
+
+### Requiring sign-in for decisions (`GOOGLE_CLIENT_ID`)
+
+`POST /items/{item_id}/decision` — the only endpoint that writes a permanent
+record — requires a verified Google sign-in
+(`Authorization: Bearer <google-id-token>`; see `docs/api.md`). Without
+`GOOGLE_CLIENT_ID` configured, every decision is rejected with `401` rather
+than silently trusting a client-supplied identity, which is exactly the gap
+this closes: earlier versions of this API took whatever `moderator_id`
+string a client sent, so anyone with the URL could submit a decision as
+anyone. `mcm.serving.auth`'s own logic is covered by `tests/test_auth.py`
+and `tests/test_serving_app.py::TestDecisionAuth`; the setup below — a real
+Google Cloud OAuth client — is what needs doing once, by you, since it
+involves your own Google Cloud project's consent screen and branding.
+
+**Backend and frontend both need the same Client ID** — one identifies the
+app to Google on both sides; it is not a secret (it's meant to ship in
+frontend JavaScript, unlike a client *secret*, which this flow never uses at
+all — Google Identity Services hands the frontend a signed ID token
+directly, and the backend only verifies it against Google's public keys).
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   (same project as the Cloud Run service, or any project — it doesn't need
+   to match), go to **APIs & Services → Credentials**.
+2. If prompted, configure the **OAuth consent screen** first: External user
+   type, an app name, your own email as support contact. "Testing" publish
+   status is enough for personal/demo use; anyone else signing in needs to
+   be added as a test user under that status, or the screen needs to be
+   published (Google review only kicks in for sensitive scopes, which this
+   flow doesn't request — it asks for basic profile/email only).
+3. **Create Credentials → OAuth client ID → Web application.**
+4. Under **Authorized JavaScript origins**, add every origin the frontend is
+   actually served from: your Vercel production domain
+   (`https://your-app.vercel.app`), and `http://localhost:3000` for local
+   dev. No **Authorized redirect URIs** are needed — this flow never
+   redirects to Google, the button renders inline and posts the token back
+   via JavaScript.
+5. Copy the generated **Client ID** (ends in
+   `.apps.googleusercontent.com`) and set it in both places:
+
+```bash
+gcloud run services update vanguard-moderation-api --region=asia-south1 \
+  --update-env-vars=GOOGLE_CLIENT_ID="<client-id>.apps.googleusercontent.com"
+```
+
+Then in Vercel: **Project Settings → Environment Variables**, add
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` with the identical value, and redeploy the
+frontend (env var changes don't apply to an already-built deployment).
+
+**Verify:** open the frontend, click a queue item, and confirm the decision
+bar shows a real Google account picker (not "Sign-in is not configured on
+this deployment"). Signing in and clicking a decision should return
+`moderator_id` as your actual Google account email in the response — check
+with the browser's network tab, or `GET /items/{item_id}` afterwards.
 
 ---
 

@@ -243,8 +243,17 @@ class QueueResponse(BaseModel):
 
 
 class DecisionRequest(BaseModel):
+    """A moderator's decision on an item.
+
+    No moderator_id field, deliberately — earlier versions of this API
+    trusted whatever string a client sent here, so anyone with the URL could
+    submit a decision as anyone. The moderator's identity now comes only
+    from a verified Google sign-in (POST /items/{id}/decision requires an
+    Authorization: Bearer <google-id-token> header); a client-supplied
+    identity is never trusted for a permanent record again.
+    """
+
     action: DecisionAction
-    moderator_id: str
     rationale: str | None = None
     agreed_with_model: bool | None = None
     explanation_was_useful: bool | None = None
@@ -254,6 +263,9 @@ class DecisionResponse(BaseModel):
     item_id: str
     status: str
     action: DecisionAction
+    #: The verified signer's email — set server-side from the Google token,
+    #: never from client input. See DecisionRequest's own note.
+    moderator_id: str
     decided_at: str
     time_to_decision_seconds: int
 

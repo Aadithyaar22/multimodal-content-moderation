@@ -10,8 +10,8 @@
  * blending collapses to no contrast.
  */
 
-import Link from "next/link";
 import { LiquidGlassShader } from "@/components/LiquidGlassShader";
+import { HeroCta } from "@/components/HeroCta";
 
 export default function LandingPage() {
   return (
@@ -28,21 +28,7 @@ export default function LandingPage() {
             Absolute clarity in the face of complex data.
           </p>
 
-          <Link
-            href="/queue"
-            className="group relative mt-4 overflow-hidden rounded-full bg-white px-12 py-4 text-black transition-transform duration-300 hover:scale-105 focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black focus:outline-none active:scale-95"
-          >
-            <span className="label-tech-lg relative z-10 flex items-center gap-2 font-bold">
-              Start Review
-              <span aria-hidden className="text-[18px] leading-none">
-                →
-              </span>
-            </span>
-            <span
-              aria-hidden
-              className="absolute inset-0 -translate-x-full -skew-x-12 bg-black/10 group-hover:animate-[shimmer_1.5s_infinite]"
-            />
-          </Link>
+          <HeroCta />
         </div>
 
         <div className="absolute bottom-12 flex w-full flex-col items-center gap-3 text-center text-white opacity-60 mix-blend-difference">

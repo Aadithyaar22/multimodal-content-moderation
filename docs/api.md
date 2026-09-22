@@ -394,12 +394,22 @@ is `null` until a client has specifically called `GET
 
 ### `POST /items/{item_id}/decision`
 
-Records a human decision. This is the only state-changing endpoint.
+Records a human decision. This is the only state-changing endpoint, and the
+only one that requires sign-in.
+
+**Requires `Authorization: Bearer <google-id-token>`.** The token is a
+Google Identity Services credential (obtained via "Sign in with Google" in
+the browser — see `docs/deployment.md`'s Google Sign-In section), verified
+server-side against Google's own public keys (`mcm.serving.auth`). There is
+no `moderator_id` field in the request body — earlier versions of this API
+trusted whatever string a client sent there, so anyone with the URL could
+submit a decision as anyone. The moderator's identity now comes only from
+the verified token; a client-supplied identity is never trusted for a
+permanent record again.
 
 ```json
 {
   "action": "remove",
-  "moderator_id": "mod_7f3a",
   "rationale": "Confirmed targeted harassment of an identifiable person.",
   "agreed_with_model": true,
   "explanation_was_useful": true
@@ -415,14 +425,23 @@ Records a human decision. This is the only state-changing endpoint.
   "item_id": "itm_01J8XQ2K3M",
   "status": "resolved",
   "action": "remove",
+  "moderator_id": "moderator@gmail.com",
   "decided_at": "2026-08-21T09:16:40Z",
   "time_to_decision_seconds": 138
 }
 ```
 
+`moderator_id` in the response is the verified signer's email, set
+server-side — never echo it from request input.
+
 `agreed_with_model` and `explanation_was_useful` are optional but feed the
 human-agreement metric in report Sec. 6. Make them one-click, not a form — a
 required field here will just get clicked through and poison the data.
+
+**Errors:** `401` missing, invalid, or expired sign-in
+(`WWW-Authenticate: Bearer`); `404` item not found. A `401` here must be a
+hard stop client-side — the item must not appear to move to `resolved`
+after a rejected request.
 
 ---
 

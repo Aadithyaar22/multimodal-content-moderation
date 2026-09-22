@@ -217,6 +217,9 @@ export interface DecisionResponse {
   item_id: string;
   status: ItemStatus;
   action: DecisionAction;
+  /** The verified Google-account email that signed this decision — set
+   * server-side from the sign-in token, never from client input. */
+  moderator_id: string;
   decided_at: string;
   time_to_decision_seconds: number;
 }

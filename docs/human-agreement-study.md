@@ -14,12 +14,22 @@ real people, which only you can run. This is the exact procedure.
 - The toggles are deliberately optional — a required field on a bar clicked
   hundreds of times a day gets clicked through on autopilot, and the data
   becomes worthless.
-- Each browser gets its own rater id on first decision (a one-time prompt,
-  stored in `localStorage` — see `frontend/src/lib/moderator.ts`), so
-  decisions from different raters are distinguishable afterwards. This was a
-  real gap until this pass: the bar previously hardcoded `moderator_id:
-  "mod_demo"` for everyone, which would have made a 15-person study
-  indistinguishable from one person clicking 15 times.
+- Raters are distinguishable by their real, verified Google account
+  (`frontend/src/lib/auth.tsx`, `mcm.serving.auth`) — every decision requires
+  signing in, and the backend rejects the request outright if the identity
+  doesn't verify. This superseded an earlier, lighter mechanism (a
+  self-chosen nickname stored in the browser, no verification at all) that
+  was itself a fix for a worse bug: the bar originally hardcoded
+  `moderator_id: "mod_demo"` for everyone, which would have made a
+  15-person study indistinguishable from one person clicking 15 times. Real
+  sign-in is a strict improvement for a study specifically — a rater can no
+  longer be impersonated or double-counted under a different nickname — at
+  the cost of the earlier version's two conveniences: a rater needs a Google
+  account, and their real email now appears in the stored decision rather
+  than an anonymous nickname they chose. If full rater anonymity actually
+  matters for a given study (participants who'd answer differently if their
+  identity were attached to it), account for that when recruiting rather
+  than assuming the old anonymous flow is still there.
 - `POST /items/{id}/decision` records every decision; `GET /stats` aggregates
   `agreement_rate` and `explanation_useful_rate` over every resolved item that
   answered (`src/mcm/serving/store.py::aggregate_stats`), tested in
@@ -42,9 +52,13 @@ real people, which only you can run. This is the exact procedure.
 3. **Brief them in one sentence:** "Open a few items, read the verdict and
    explanation, then click Approve/Remove/Escalate/Defer as you genuinely
    would, and use the two toggles honestly — skip a toggle if you're not
-   sure rather than guessing." They'll be prompted once for a rater id on
-   their first decision; anything memorable is fine, it never leaves their
-   browser except attached to their own decisions.
+   sure rather than guessing." They'll need to sign in with a Google account
+   the first time they try to record a decision (an inline button right on
+   the decision bar, no separate step) — this requires `GOOGLE_CLIENT_ID` /
+   `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to be configured first, see
+   `docs/deployment.md`'s Google Sign-In section. Tell raters up front that
+   their Google account email is what gets recorded against their ratings,
+   not an anonymous handle — see the anonymity note above.
 
 4. **Let each rater cover at least 5-8 items.** Below that, one rater's
    personal quirks dominate their contribution to the pooled rate.
@@ -75,10 +89,12 @@ real people, which only you can run. This is the exact procedure.
 
    The per-decision `moderator_id` isn't currently surfaced through a
    dedicated endpoint — `GET /items/{id}` on each resolved item's `decisions`
-   list has it, since `moderator_id` is part of every stored decision
-   (`DecisionRequest` in `src/mcm/serving/schemas.py`). For 10-15 raters
-   across a few dozen items this is few enough calls to just script directly
-   against `/items/{id}` for each id returned by `/queue?status=resolved`.
+   list has it, since every stored decision carries it (set server-side from
+   the verified Google sign-in — see `DecisionResponse` in
+   `src/mcm/serving/schemas.py`, not the request body, which no longer
+   accepts one at all). For 10-15 raters across a few dozen items this is
+   few enough calls to just script directly against `/items/{id}` for each
+   id returned by `/queue?status=resolved`.
 
 ## What this can't do for you
 
