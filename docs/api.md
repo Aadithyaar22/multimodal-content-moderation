@@ -322,11 +322,16 @@ built-in web-search tool the ones this project otherwise calls do. An unset
 `status: "unavailable"` rather than trying a model with no real search
 capability and returning an ungrounded guess dressed up as a checked claim.
 
-**Errors:** `404` item not found. No dedicated rate limit beyond the
-service-wide defaults — this is a heavier call than `/explanation` (a real
-search round-trip on top of generation; ~5-8s observed in practice), so a
-client-side "checking…" state that doesn't block the rest of the page is the
-right UX, the same as `/explanation`'s own async pattern.
+**Errors:** `404` item not found; `429` too many requests from this client
+(retry after `Retry-After` seconds). Rate-limited independently of
+`/analyze` — 5 requests/minute per client, tighter than `/analyze`'s 20,
+since a single search-grounded call costs meaningfully more (a real search
+round-trip on top of generation; ~5-9s observed in practice). The limit only
+counts calls that actually run a search — re-fetching an item whose claim
+was already checked is served from cache and never touches it, so reopening
+an item you've already checked can never trip this. A client-side
+"checking…" state that doesn't block the rest of the page is the right UX,
+the same as `/explanation`'s own async pattern.
 
 ---
 

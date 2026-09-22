@@ -591,6 +591,66 @@ class TestRateLimit:
         assert client.get("/api/v1/health").status_code == 200
         assert client.get("/api/v1/queue").status_code == 200
 
+    def test_fact_check_has_its_own_bucket(self, client, monkeypatch):
+        """/fact-check shipped with no limit at all — a real gap, since it's a
+        billed search round-trip. Its bucket must be independent of
+        /analyze's: exhausting one must not silently exhaust the other for
+        the same client, which would read as an unrelated bug to whoever
+        hits it."""
+        monkeypatch.setattr(ratelimit, "MAX_REQUESTS_PER_WINDOW", 1)
+        monkeypatch.setattr(ratelimit, "FACT_CHECK_MAX_REQUESTS_PER_WINDOW", 3)
+        monkeypatch.setattr(app_module.factcheck_mod, "generate", lambda payload: {
+            "status": "unavailable", "verdict": None, "summary": None,
+            "sources": [], "model": None, "latency_ms": 1,
+        })
+
+        item_id = client.post("/api/v1/analyze", data={"text": "hi"}).json()["item_id"]
+        # /analyze's own budget (1) is already spent by the line above; a
+        # fresh /fact-check burst must still have its own full budget (3).
+        for _ in range(3):
+            assert client.get(f"/api/v1/items/{item_id}/fact-check").status_code != 429
+
+    def test_fact_check_blocks_after_the_configured_window(self, client, monkeypatch):
+        monkeypatch.setattr(ratelimit, "FACT_CHECK_MAX_REQUESTS_PER_WINDOW", 2)
+        calls = {"n": 0}
+
+        def fake_generate(payload):
+            calls["n"] += 1
+            # Never "ready", so every call actually reaches the rate limiter
+            # instead of being served from cache.
+            return {
+                "status": "unavailable", "verdict": None, "summary": None,
+                "sources": [], "model": None, "latency_ms": 1,
+            }
+
+        monkeypatch.setattr(app_module.factcheck_mod, "generate", fake_generate)
+        item_id = client.post("/api/v1/analyze", data={"text": "hi"}).json()["item_id"]
+
+        assert client.get(f"/api/v1/items/{item_id}/fact-check").status_code == 200
+        assert client.get(f"/api/v1/items/{item_id}/fact-check").status_code == 200
+        blocked = client.get(f"/api/v1/items/{item_id}/fact-check")
+        assert blocked.status_code == 429
+        assert "Retry-After" in blocked.headers
+        assert calls["n"] == 2  # the blocked call never reached generate()
+
+    def test_a_cached_ready_result_does_not_count_against_the_limit(self, client, monkeypatch):
+        """The rate limit exists to bound the real, billed search calls — a
+        moderator re-opening an item that was already checked costs nothing
+        and must not be throttled for it."""
+        monkeypatch.setattr(ratelimit, "FACT_CHECK_MAX_REQUESTS_PER_WINDOW", 1)
+        monkeypatch.setattr(app_module.factcheck_mod, "generate", lambda payload: {
+            "status": "ready", "verdict": "unclear", "summary": "s",
+            "sources": [], "model": "gemini-2.5-flash", "latency_ms": 1,
+        })
+        item_id = client.post("/api/v1/analyze", data={"text": "hi"}).json()["item_id"]
+
+        first = client.get(f"/api/v1/items/{item_id}/fact-check")
+        assert first.status_code == 200
+        # This spends the one available slot; a second GET on the SAME item
+        # must be a free cache hit, not a second charge against the budget.
+        for _ in range(5):
+            assert client.get(f"/api/v1/items/{item_id}/fact-check").status_code == 200
+
 
 class TestCors:
     def test_allowed_origin_gets_the_header(self, client):

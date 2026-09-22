@@ -43,7 +43,7 @@ from mcm.serving.inference import (
     run_arms,
     verdict_for,
 )
-from mcm.serving.ratelimit import enforce_rate_limit
+from mcm.serving.ratelimit import enforce_fact_check_rate_limit, enforce_rate_limit
 from mcm.serving.schemas import (
     Attributions,
     DecisionRequest,
@@ -514,13 +514,20 @@ def get_attributions(item_id: str) -> Attributions:
 
 
 @app.get("/api/v1/items/{item_id}/fact-check", response_model=FactCheck)
-def get_fact_check(item_id: str) -> FactCheck:
+def get_fact_check(item_id: str, request: Request) -> FactCheck:
     """Live, web-search-grounded check of the caption's own claim.
 
     Deliberately a separate endpoint from /explanation, not bundled into it —
     a real search round-trip costs more than explaining a score the model
     already computed, so this only runs when a client specifically asks for
     it, not automatically on every analysis.
+
+    Rate-limited on the search itself, not as a route-level dependency — a
+    moderator re-opening an item that was already checked must not be
+    blocked by a limit meant for the real, billed search, which the cache
+    hit below never triggers. A tighter bucket than /analyze's (see
+    ratelimit.py): a real per-call search cost with no limit at all was a
+    genuine gap, not a deliberate choice, until this.
     """
     record = _store.get(item_id)
     if not record:
@@ -529,6 +536,8 @@ def get_fact_check(item_id: str) -> FactCheck:
     cached = record.get("fact_check")
     if cached and cached.get("status") == "ready":
         return FactCheck(**cached)
+
+    enforce_fact_check_rate_limit(request)
 
     misinfo = record["heads"].get("misinformation")
     result = factcheck_mod.generate(
