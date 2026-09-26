@@ -31,11 +31,16 @@ from scipy import stats
 from mcm.training.trainer import results_dir
 from mcm.utils import console
 
-ARM_ORDER = ["cv_only", "nlp_only", "late_fusion", "cross_attention"]
+ARM_ORDER = ["cv_only", "nlp_only", "late_fusion", "no_cross_attention", "cross_attention"]
 ARM_LABELS = {
     "cv_only": "CV-only",
     "nlp_only": "NLP-only",
     "late_fusion": "Late fusion",
+    # Same parameter count and token-level input as cross-attention, with
+    # cross-modal information flow switched off — the control that separates
+    # "more capacity + finer-grained input" from "the attention mechanism
+    # specifically" in the cross-attention vs. late-fusion comparison.
+    "no_cross_attention": "No cross-attn (control)",
     "cross_attention": "Cross-attention",
 }
 TASK_FOR = {"hateful_memes": "toxicity", "fakeddit": "misinformation"}

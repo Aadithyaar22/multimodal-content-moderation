@@ -143,6 +143,7 @@ given its own hyperparameter search, selected on validation only.
 | CV-only | 3 | 0.6217 ± 0.0064 | [0.606, 0.637] | 0.678 |
 | NLP-only | 3 | 0.6283 ± 0.0098 | [0.604, 0.653] | 0.686 |
 | Late fusion | 5 | 0.6910 ± 0.0074 | [0.682, 0.700] | 0.764 |
+| No cross-attn (control) | 7 | 0.6968 ± 0.0117 | [0.686, 0.708] | 0.758 |
 | **Cross-attention** | 7 | **0.7035 ± 0.0120** | [0.692, 0.715] | 0.769 |
 
 Cross-attention − late fusion = **+0.0125**, Welch's t = 2.217, **p = 0.051**.
@@ -154,29 +155,54 @@ Cross-attention − late fusion = **+0.0125**, Welch's t = 2.217, **p = 0.051**.
 | CV-only | 3 | 0.6863 ± 0.0040 | [0.676, 0.696] | 0.883 |
 | NLP-only | 3 | 0.7031 ± 0.0030 | [0.696, 0.711] | 0.875 |
 | **Late fusion** | 5 | **0.7732 ± 0.0085** | [0.763, 0.784] | 0.926 |
+| No cross-attn (control) | 5 | 0.7575 ± 0.0069 | [0.749, 0.766] | 0.912 |
 | Cross-attention | 5 | 0.7705 ± 0.0069 | [0.762, 0.779] | 0.914 |
 
 Cross-attention − late fusion = **−0.0027**, Welch's t = −0.553, **p = 0.596**.
 
-### What this shows
+### Isolating the mechanism from capacity
 
-Both benchmarks agree on the large effect: either modality alone is weak, and
-using both helps substantially — roughly 7 points on Hateful Memes and 7 on
-Fakeddit. That gap is the project's premise and it is not in doubt.
+A fair objection to the headline table above: cross-attention has ~18–25x
+late fusion's own parameter count (checked the real checkpoints — 148,613 vs
+3,687,173 on Hateful Memes; 791,045 vs 13,926,405 on Fakeddit) and reads
+unpooled per-token features late fusion never sees. Either difference alone
+could produce a gain with cross-modal attention doing nothing.
 
-The two benchmarks disagree on the smaller question of *how* to combine them,
-and the disagreement is the interesting result. Cross-attention edges ahead
-precisely on the dataset Meta engineered so that neither modality alone is
-offensive, and does nothing on the one where a single modality usually suffices.
-A merely larger model would have won on both or neither; winning only where
-cross-modal reasoning is actually required is evidence about the mechanism.
+**No cross-attn (control)** answers this directly: the exact same module,
+exact same parameter count as cross-attention (verified byte-for-byte
+identical), same token-level input — with query/key/value routed within each
+modality instead of across, so no cross-modal information can flow. Whatever
+it does differently from late fusion is capacity and granularity alone.
+Whatever cross-attention adds on top of *that* is the mechanism itself.
 
-**Neither gap is statistically separable from seed noise** (p = 0.051 and
-p = 0.596), and this is reported as such rather than rounded into a win. At
-8,500 training memes, a 14M-parameter block trained from scratch is
-under-resourced, and the honest reading is that cross-modal attention pays off
-in proportion to how much the task demands it — suggestively on Hateful Memes,
-not at all on Fakeddit.
+| Dataset | Capacity + granularity alone (control − late fusion) | Attention specifically (cross-attn − control) |
+|---|---|---|
+| Hateful Memes | +0.0058, p = 0.319 — not significant | +0.0067, p = 0.315 — not significant |
+| Fakeddit | **−0.0157, p = 0.013 — significantly *worse*** | **+0.0130, p = 0.018 — significantly *better*** |
+
+The Fakeddit numbers are the more interesting finding. Extra capacity and
+token-level input **without** cross-modal attention makes things
+significantly *worse* than late fusion — on a benchmark where a lot of the
+misinformation signal already lives in the text, more parameters with no way
+to relate the two modalities just overfits. Add cross-modal attention back at
+the identical parameter count, and it recovers a statistically significant
+**+0.0130 (p = 0.018)** — real, measurable work, not nothing. It just doesn't
+fully close the gap back to late fusion's leaner approach, which is why the
+original headline comparison read as "no effect." That framing undersold what
+is actually happening: cross-attention is significantly counteracting a
+significant capacity penalty on Fakeddit, and mostly succeeding.
+
+On Hateful Memes, neither half of the split reaches significance on its own
+(p = 0.319, p = 0.315) — smaller effect, less power, exactly what splitting an
+already-borderline result into two pieces predicts. The point estimate splits
+the gain roughly evenly (47% capacity/granularity, 53% attention), but at 7
+seeds this experiment narrows *where* the uncertainty lives without resolving
+it entirely.
+
+```bash
+python scripts/ablation_table.py --datasets hateful_memes fakeddit --baseline late_fusion --proposal no_cross_attention
+python scripts/ablation_table.py --datasets hateful_memes fakeddit --baseline no_cross_attention --proposal cross_attention
+```
 
 ### Recall on the cases both unimodal arms missed
 
