@@ -172,6 +172,78 @@ class TestDegenerateInputs:
         assert bad == []
 
 
+class TestNoCrossModalControl:
+    """The confound-isolation control: same modules, same parameter count,
+    cross-modal information flow switched off. Built in response to a real
+    question about the headline ablation — cross-attention has ~18-25x late
+    fusion's own parameter count and reads unpooled token features late
+    fusion never sees, so a win there could be capacity or granularity, not
+    the cross-modal mechanism specifically. These tests exist to make sure
+    the control actually controls for what it claims to."""
+
+    def test_parameter_count_is_exactly_identical_to_cross_attention(self):
+        """The whole point of this control: it must not itself introduce a
+        capacity difference, or it would just be a second, different
+        confound instead of an answer to the first one."""
+        with_cross = CrossAttentionFusion(d_model=256, n_layers=2, n_heads=8, cross_modal=True)
+        without_cross = CrossAttentionFusion(d_model=256, n_layers=2, n_heads=8, cross_modal=False)
+        n_with = sum(p.numel() for p in with_cross.parameters())
+        n_without = sum(p.numel() for p in without_cross.parameters())
+        assert n_with == n_without
+
+    def test_build_model_dispatches_to_the_control(self):
+        from mcm.models.baselines import build_model
+
+        m = build_model("no_cross_attention", d_model=256, n_layers=2, n_heads=8)
+        assert isinstance(m, CrossAttentionFusion)
+        assert m.blocks[0].cross_modal is False
+
+    def test_image_stream_is_invariant_to_text_content(self):
+        """The property the control is named for: with cross_modal=False, the
+        image stream must not change at all when only the text changes —
+        if it did, information would be leaking across modalities somewhere
+        despite the query/key/value routing, and the control would be
+        measuring the wrong thing."""
+        block = CrossAttentionBlock(d_model=512, n_heads=8, cross_modal=False).eval()
+        img = torch.randn(2, 50, 512)
+        out_img_a, _ = block(img, torch.randn(2, 77, 512))
+        out_img_b, _ = block(img, torch.randn(2, 77, 512))
+        assert torch.allclose(out_img_a, out_img_b, atol=1e-6)
+
+    def test_text_stream_is_invariant_to_image_content(self):
+        block = CrossAttentionBlock(d_model=512, n_heads=8, cross_modal=False).eval()
+        txt = torch.randn(2, 77, 512)
+        _, out_txt_a = block(torch.randn(2, 50, 512), txt)
+        _, out_txt_b = block(torch.randn(2, 50, 512), txt)
+        assert torch.allclose(out_txt_a, out_txt_b, atol=1e-6)
+
+    def test_each_stream_still_processes_its_own_content(self):
+        """Not a no-op: self-attention plus the per-token FFN still refines
+        each stream from its own tokens, so cross_modal=False is a genuine
+        architectural variant, not a dead block that just happens to have the
+        right parameter count."""
+        block = CrossAttentionBlock(d_model=512, n_heads=8, cross_modal=False).eval()
+        img = torch.randn(2, 50, 512)
+        out_a, _ = block(img, torch.randn(2, 77, 512))
+        out_b, _ = block(img * 3.0, torch.randn(2, 77, 512))
+        assert not torch.allclose(out_a, out_b, atol=1e-5)
+
+    def test_full_model_forward_and_backward_are_finite(self):
+        """Same degenerate-input guarantees as the cross-attention arm —
+        this control has to be trainable for real, not just constructible."""
+        model = CrossAttentionFusion(n_layers=2, n_heads=8, cross_modal=False)
+        img, txt, attn = _inputs()
+        out = model(image_tokens=img, text_tokens=txt, text_attention_mask=attn)
+        assert torch.isfinite(out.toxicity_logits).all()
+        out.toxicity_logits.sum().backward()
+        bad = [
+            n
+            for n, p in model.named_parameters()
+            if p.grad is not None and not torch.isfinite(p.grad).all()
+        ]
+        assert bad == []
+
+
 class TestCapacity:
     def test_head_matches_the_other_arms(self, model):
         """Shared head keeps the ablation honest: a win must come from fusion,

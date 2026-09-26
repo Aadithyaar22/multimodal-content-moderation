@@ -117,6 +117,15 @@ def build_model(arch: str, **kwargs) -> nn.Module:
         from mcm.models.fusion import CrossAttentionFusion
 
         return CrossAttentionFusion(**kwargs)
+    if arch == "no_cross_attention":
+        # The capacity/granularity control for the headline ablation: exactly
+        # CrossAttentionFusion, exactly the same parameter count for a given
+        # d_model/n_layers/n_heads config, with cross-modal information flow
+        # switched off at the one place it happens. See CrossAttentionBlock's
+        # docstring in mcm/models/fusion.py.
+        from mcm.models.fusion import CrossAttentionFusion
+
+        return CrossAttentionFusion(cross_modal=False, **kwargs)
     raise ValueError(f"unknown architecture {arch!r}")
 
 
@@ -124,6 +133,6 @@ def build_model(arch: str, **kwargs) -> nn.Module:
 POOLED_ARCHITECTURES = ("cv_only", "nlp_only", "late_fusion")
 
 #: Arms that consume token-level sequences and therefore need the token cache.
-TOKEN_ARCHITECTURES = ("cross_attention",)
+TOKEN_ARCHITECTURES = ("cross_attention", "no_cross_attention")
 
 ARCHITECTURES = POOLED_ARCHITECTURES + TOKEN_ARCHITECTURES

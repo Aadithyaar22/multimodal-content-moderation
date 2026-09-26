@@ -39,10 +39,31 @@ from mcm.models.heads import HeadOutput, MultiTaskHead
 
 
 class CrossAttentionBlock(nn.Module):
-    """One bidirectional co-attention layer with pre-norm residuals."""
+    """One bidirectional co-attention layer with pre-norm residuals.
 
-    def __init__(self, d_model: int = 512, n_heads: int = 8, dropout: float = 0.1, ffn_mult: int = 4):
+    ``cross_modal=False`` turns this into its own ablation control: the exact
+    same ``nn.MultiheadAttention`` modules, same shapes, same parameter count,
+    but each stream attends to *itself* instead of the other stream, so no
+    cross-modal information ever flows. This exists to answer a question the
+    headline ablation (cross-attention vs. late fusion) cannot: cross-attention
+    also has ~18-25x late fusion's parameter count and operates on unpooled
+    per-token features late fusion never sees, so a win there could be
+    capacity or granularity, not the cross-modal mechanism specifically. This
+    class, called with cross_modal=False, is parameter-for-parameter identical
+    to cross_modal=True — the one thing that differs is what the query/key/
+    value routing lets each stream see. See scripts/no_attention_ablation.py.
+    """
+
+    def __init__(
+        self,
+        d_model: int = 512,
+        n_heads: int = 8,
+        dropout: float = 0.1,
+        ffn_mult: int = 4,
+        cross_modal: bool = True,
+    ):
         super().__init__()
+        self.cross_modal = cross_modal
         self.image_attn = nn.MultiheadAttention(d_model, n_heads, dropout=dropout, batch_first=True)
         self.text_attn = nn.MultiheadAttention(d_model, n_heads, dropout=dropout, batch_first=True)
 
@@ -75,22 +96,31 @@ class CrossAttentionBlock(nn.Module):
         img_n = self.image_norm_attn(image)
         txt_n = self.text_norm_attn(text)
 
+        # The ablation control: same two nn.MultiheadAttention modules, same
+        # parameter count, but key/value now come from the querying stream's
+        # own tokens instead of the other modality's — no cross-modal
+        # information can flow through this op. Image keys are self or the
+        # other modality's, never padded either way (every image contributes
+        # all 50 patches); text keys need text_padding_mask exactly when text
+        # is querying *itself*, which it wasn't previously doing at all.
+        img_kv = txt_n if self.cross_modal else img_n
+        txt_kv = img_n if self.cross_modal else txt_n
+        img_key_padding = text_padding_mask if self.cross_modal else None
+        txt_key_padding = None if self.cross_modal else text_padding_mask
+
         img_attended, img_weights = self.image_attn(
             query=img_n,
-            key=txt_n,
-            value=txt_n,
-            key_padding_mask=text_padding_mask,
+            key=img_kv,
+            value=img_kv,
+            key_padding_mask=img_key_padding,
             need_weights=return_attention,
             average_attn_weights=True,
         )
-        # Image keys are never padded — every image contributes all 50 patches —
-        # so no key_padding_mask here. Rows that have no image at all are handled
-        # by the caller, not by masking every key, which would make the softmax
-        # denominator zero and produce NaN.
         txt_attended, txt_weights = self.text_attn(
             query=txt_n,
-            key=img_n,
-            value=img_n,
+            key=txt_kv,
+            value=txt_kv,
+            key_padding_mask=txt_key_padding,
             need_weights=return_attention,
             average_attn_weights=True,
         )
@@ -125,8 +155,15 @@ class CrossAttentionFusion(nn.Module):
     pooled 512-d vectors the other arms use, because attention between two single
     vectors is degenerate — it reduces to a learned scalar gate.
 
-    The head is the same ``MultiTaskHead`` every other arm uses, so any gain here
-    is attributable to the fusion mechanism and not to extra classifier capacity.
+    The head is the same ``MultiTaskHead`` every other arm uses, so any gain over
+    late fusion is not attributable to a bigger classifier sitting on top. It is
+    not, on its own, evidence the gain is *specifically* the cross-modal
+    attention mechanism, either — this block has ~18-25x late fusion's own
+    parameter count and reads token-level features late fusion never sees, both
+    of which favor this arm before training starts. ``cross_modal=False``
+    (routed straight through to every block) holds both of those fixed while
+    removing only the cross-modal information flow, for exactly that reason —
+    see CrossAttentionBlock's own docstring and scripts/no_attention_ablation.py.
     """
 
     def __init__(
@@ -139,13 +176,14 @@ class CrossAttentionFusion(nn.Module):
         head_dropout: float = 0.3,
         image_dim: int = VISION_HIDDEN,
         text_dim: int = TEXT_HIDDEN,
+        cross_modal: bool = True,
     ):
         super().__init__()
         self.image_proj = nn.Linear(image_dim, d_model)
         self.text_proj = nn.Linear(text_dim, d_model)
 
         self.blocks = nn.ModuleList(
-            CrossAttentionBlock(d_model=d_model, n_heads=n_heads, dropout=dropout)
+            CrossAttentionBlock(d_model=d_model, n_heads=n_heads, dropout=dropout, cross_modal=cross_modal)
             for _ in range(n_layers)
         )
 
