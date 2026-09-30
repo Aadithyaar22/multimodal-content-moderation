@@ -695,6 +695,7 @@ def queue(
     emergent_only: bool = False,
     limit: int = Query(25, le=100),
     cursor: str | None = None,
+    sort: str = "priority",
 ) -> QueueResponse:
     offset = int(cursor) if cursor and cursor.isdigit() else 0
     records, total = _store.query(
@@ -704,6 +705,7 @@ def queue(
         emergent_only=emergent_only,
         limit=limit,
         offset=offset,
+        sort=sort if sort == "recent" else "priority",
     )
 
     now = time.time()

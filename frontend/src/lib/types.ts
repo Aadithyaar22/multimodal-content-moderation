@@ -166,6 +166,9 @@ export interface QueueFilters {
   min_priority?: number;
   head?: "toxicity" | "misinformation";
   emergent_only?: boolean;
+  /** `priority` (default — ranked, the product) or `recent` (arrival order,
+   * for triage/debugging — "what did I just submit"). */
+  sort?: "priority" | "recent";
   limit?: number;
   cursor?: string;
 }

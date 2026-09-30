@@ -141,9 +141,12 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueRespons
     if (filters.min_priority != null) {
       items = items.filter((i) => i.verdict.priority_score >= filters.min_priority!);
     }
-    // The ranking is the product: never fall back to chronological order.
-    items = [...items].sort(
-      (a, b) => b.verdict.priority_score - a.verdict.priority_score,
+    // The ranking is the product by default; sort=recent is an explicit,
+    // opt-in exception for triage/debugging, not a silent fallback.
+    items = [...items].sort((a, b) =>
+      filters.sort === "recent"
+        ? b.created_at.localeCompare(a.created_at)
+        : b.verdict.priority_score - a.verdict.priority_score,
     );
     return {
       items,

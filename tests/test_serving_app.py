@@ -521,6 +521,32 @@ class TestQueueAndDecision:
         items = client.get("/api/v1/queue").json()["items"]
         assert items[0]["text_preview"] == "high priority"
 
+    def test_sort_recent_orders_by_arrival_despite_lower_priority(self, client, monkeypatch):
+        """The toggle this enables: sort=recent must show what was *just*
+        submitted first, even when it scores lower than older items — the
+        opposite ordering from the default, on purpose."""
+        calls = iter(
+            [
+                ArmOutputs(cv_only=0.9, nlp_only=0.9, fusion=0.9, fusion_probs={"benign": 0.1, "harmful": 0.9}),
+                ArmOutputs(cv_only=0.2, nlp_only=0.2, fusion=0.2, fusion_probs={"benign": 0.8, "harmful": 0.2}),
+            ]
+        )
+        monkeypatch.setattr(
+            app_module, "run_arms", lambda *a, **k: (next(calls), {"encode": 1})
+        )
+        client.post("/api/v1/analyze", data={"text": "high priority, arrived first"})
+        client.post("/api/v1/analyze", data={"text": "low priority, arrived second"})
+
+        by_priority = client.get("/api/v1/queue").json()["items"]
+        assert by_priority[0]["text_preview"] == "high priority, arrived first"
+
+        by_recency = client.get("/api/v1/queue", params={"sort": "recent"}).json()["items"]
+        assert by_recency[0]["text_preview"] == "low priority, arrived second"
+
+    def test_unrecognized_sort_value_falls_back_to_priority(self, client):
+        r = client.get("/api/v1/queue", params={"sort": "not_a_real_option"})
+        assert r.status_code == 200
+
 
 class TestDecisionAuth:
     """Every other decision test above runs with require_moderator overridden

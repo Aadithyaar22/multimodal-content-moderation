@@ -397,8 +397,9 @@ the same as `/explanation`'s own async pattern.
 
 ### `GET /queue`
 
-The ranked moderator queue. **Ranked, not chronological** — that ordering is the
-product.
+The ranked moderator queue. **Ranked, not chronological by default** — that
+ordering is the product. `sort=recent` is an explicit opt-out for triage and
+debugging ("what did I just submit"), not a replacement default.
 
 Query params:
 
@@ -408,6 +409,7 @@ Query params:
 | `min_priority` | float | `0.0` | Filter by `priority_score` |
 | `head` | enum | — | `toxicity` \| `misinformation` — matches `active_heads`, not `top_head` |
 | `emergent_only` | bool | `false` | Only items where `fusion_signal.is_emergent` |
+| `sort` | enum | `priority` | `priority` \| `recent` — `recent` orders by `created_at` descending |
 | `limit` | int | `25` | Max 100 |
 | `cursor` | string | — | Opaque, from previous response |
 

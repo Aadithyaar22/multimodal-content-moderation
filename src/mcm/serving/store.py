@@ -144,8 +144,13 @@ class Store:
         emergent_only: bool = False,
         limit: int = 25,
         offset: int = 0,
+        sort: str = "priority",
     ) -> tuple[list[dict[str, Any]], int]:
-        """Ranked queue. Ordering is by priority, never by arrival time.
+        """Ranked queue. Ordering is by priority by default, never by arrival
+        time — except when the caller explicitly asks for ``sort="recent"``,
+        which orders by ``created_at`` descending instead. That option exists
+        for triage and debugging (e.g. "what did I just submit"), not as a
+        replacement for the priority default a moderator works from.
 
         The returned count reflects exactly the filters passed in — it answers
         "how many rows matched this query" for pagination, not "how many items
@@ -175,9 +180,10 @@ class Store:
             if min_priority > 0:
                 q["priority_score"] = {"$gte": min_priority}
             total = self._collection.count_documents(q)
+            sort_field = "created_at" if sort == "recent" else "priority_score"
             cursor = (
                 self._collection.find(q, {"_id": 0})
-                .sort("priority_score", -1)
+                .sort(sort_field, -1)
                 .skip(offset)
                 .limit(limit)
             )
@@ -203,7 +209,12 @@ class Store:
             items = [i for i in items if i.get("is_emergent")]
         if min_priority > 0:
             items = [i for i in items if i.get("priority_score", 0) >= min_priority]
-        items.sort(key=lambda i: i.get("priority_score", 0), reverse=True)
+        if sort == "recent":
+            # created_at is a fixed-width ISO 8601 string (utcnow()), so a
+            # plain string sort is already chronological — same as Mongo's.
+            items.sort(key=lambda i: i.get("created_at", ""), reverse=True)
+        else:
+            items.sort(key=lambda i: i.get("priority_score", 0), reverse=True)
         return items[offset : offset + limit], len(items)
 
     def find_similar_image(

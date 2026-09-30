@@ -104,6 +104,20 @@ export default function QueuePage() {
         >
           Misinformation
         </Toggle>
+
+        <span className="label-tech ml-2 text-outline">Sort</span>
+        <Toggle
+          active={filters.sort !== "recent"}
+          onClick={() => updateFilters((f) => ({ ...f, sort: "priority" }))}
+        >
+          Priority
+        </Toggle>
+        <Toggle
+          active={filters.sort === "recent"}
+          onClick={() => updateFilters((f) => ({ ...f, sort: "recent" }))}
+        >
+          Recently analyzed
+        </Toggle>
       </div>
 
       {error && (
