@@ -16,6 +16,7 @@ separately), so the background model-loading thread never starts.
 from __future__ import annotations
 
 import io
+from collections import OrderedDict
 
 import pytest
 import torch
@@ -49,7 +50,7 @@ def client(monkeypatch):
     # A fresh store and rate-limit window per test, so tests cannot see each
     # other's items or trip each other's limits depending on run order.
     monkeypatch.setattr(app_module, "_store", Store(uri=""))
-    monkeypatch.setattr(app_module, "_images", {})
+    monkeypatch.setattr(app_module, "_images", OrderedDict())
     ratelimit._hits.clear()
     # So /auth/register and /auth/login work in every test without each one
     # configuring it — mirrors how a real deployment needs JWT_SECRET set.
@@ -212,6 +213,43 @@ class TestAnalyzeResponse:
 
     def test_unknown_item_is_404(self, client):
         assert client.get("/api/v1/items/does_not_exist").status_code == 404
+
+
+class TestImageCacheBounding:
+    """A real bug: _images was a plain dict with a comment claiming it was
+    "Bounded", but nothing ever evicted from it, so every image-bearing
+    /analyze call grew server memory by up to MAX_UPLOAD_BYTES forever. Only
+    image uploads hit this path (text-only submissions never touch _images),
+    which is why the failure only showed up when an image was attached."""
+
+    def test_image_cache_never_exceeds_its_cap(self, client, monkeypatch):
+        # A small cap so the test stays well under /analyze's own rate limit
+        # (20/min) instead of exercising it via dozens of real requests.
+        monkeypatch.setattr(app_module, "MAX_IMAGE_CACHE_ITEMS", 3)
+        for i in range(app_module.MAX_IMAGE_CACHE_ITEMS + 2):
+            r = client.post(
+                "/api/v1/analyze",
+                data={"text": f"item {i}"},
+                files={"image": (f"{i}.png", _png_bytes(), "image/png")},
+            )
+            assert r.status_code == 200
+        assert len(app_module._images) <= app_module.MAX_IMAGE_CACHE_ITEMS
+
+    def test_oldest_image_is_evicted_newest_is_kept(self, client, monkeypatch):
+        monkeypatch.setattr(app_module, "MAX_IMAGE_CACHE_ITEMS", 3)
+        ids = []
+        for i in range(app_module.MAX_IMAGE_CACHE_ITEMS + 1):
+            r = client.post(
+                "/api/v1/analyze",
+                data={"text": f"item {i}"},
+                files={"image": (f"{i}.png", _png_bytes(), "image/png")},
+            )
+            ids.append(r.json()["item_id"])
+
+        # The very first image submitted must have been evicted...
+        assert client.get(f"/api/v1/items/{ids[0]}/image").status_code == 404
+        # ...while the most recent one is still being served.
+        assert client.get(f"/api/v1/items/{ids[-1]}/image").status_code == 200
 
 
 class _FakeOcrReader:

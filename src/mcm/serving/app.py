@@ -19,6 +19,7 @@ import os
 import threading
 import time
 import uuid
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Annotated
@@ -71,12 +72,17 @@ from mcm.utils.logging import get_logger
 log = get_logger(__name__)
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+#: Worst case MAX_IMAGE_CACHE_ITEMS * MAX_UPLOAD_BYTES = 500MB, well inside
+#: the 2Gi Cloud Run limit alongside the ~690MB baseline resident set from
+#: the loaded models (see deploy/Dockerfile).
+MAX_IMAGE_CACHE_ITEMS = 50
 
 _state: dict = {"bundle": None, "loading": True, "error": None, "started": time.time()}
 _store = Store()
 #: Raw image bytes, kept only so the UI can render the evidence it just
-#: submitted. Bounded, and never the system of record.
-_images: dict[str, bytes] = {}
+#: submitted. Bounded (unlike a plain dict, LRU-evicted), and never the
+#: system of record.
+_images: OrderedDict[str, bytes] = OrderedDict()
 
 
 def _load_models() -> None:
@@ -385,6 +391,9 @@ async def analyze(
         except Exception:
             raise HTTPException(415, "file is not a decodable image") from None
         _images[item_id] = raw
+        _images.move_to_end(item_id)
+        while len(_images) > MAX_IMAGE_CACHE_ITEMS:
+            _images.popitem(last=False)
 
     heads: dict = {}
     modality: dict[str, dict[str, float]] = {"cv_only": {}, "nlp_only": {}, "fusion": {}}
