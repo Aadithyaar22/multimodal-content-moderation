@@ -64,9 +64,16 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      # 2GB fits every branch. The measured resident set is 690MB; the headroom
-      # absorbs request-time allocations rather than being spare.
-      - --memory=2Gi
+      # The measured *baseline* resident set is 690MB, but that was never the
+      # binding constraint — a single image request's peak (CLIP + the
+      # deepfake ViT + EasyOCR + image-reuse, all in flight at once) runs well
+      # above baseline, and at the old --concurrency=4 that peak multiplied
+      # across simultaneously in-flight requests, repeatedly exceeding the old
+      # 2Gi ceiling and getting the container OOM-killed mid-request — the
+      # request's response had often already been computed and stored, so the
+      # symptom was a stored item with no response ever reaching the browser,
+      # not a clean error. Bumped to 4Gi for real headroom.
+      - --memory=4Gi
       - --cpu=2
       # Scale to zero so an idle service costs nothing, and cap the ceiling so a
       # traffic spike or a loop cannot run up a bill on a real billing account.
@@ -75,9 +82,16 @@ steps:
       # Model load takes ~14s on CPU; the default 240s startup budget is ample,
       # but requests during it must not be dropped.
       - --timeout=120
-      # One in-flight request per instance. Each holds CLIP plus six heads, and
-      # concurrent requests on one instance contend for the same 2 vCPU.
-      - --concurrency=4
+      # One in-flight request per instance, matching this comment's own
+      # long-standing reasoning: each request holds CLIP plus six heads plus
+      # the deepfake/OCR branches, and concurrent requests on one instance
+      # contend for the same 2 vCPU *and* the same memory ceiling. The value
+      # here had drifted to 4 despite this comment always having said 1 — that
+      # mismatch, not the number in the comment, was the bug: four real
+      # concurrent image requests on one instance is what actually exceeded
+      # 2Gi. Extra concurrent load now spins up additional $0-when-idle
+      # instances (up to --max-instances) instead of stacking on one.
+      - --concurrency=1
       # Cloud Run's default only allocates CPU while a request is being
       # handled; a background thread (this service's own model-loading thread
       # — app.py's lifespan handler starts it explicitly so /health can answer
